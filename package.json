@@ -1,0 +1,30 @@
+{
+  "name": "agentic-environment-generation",
+  "version": "0.1.0",
+  "description": "Text-command -> playable 2D scene generation and autonomous traversal harness, built on Three.js + matter.js + the OpenAI API.",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "generate": "tsx src/harness/generate.ts",
+    "traverse": "tsx src/harness/traverse.ts",
+    "dev": "vite",
+    "demo": "tsx scripts/demo.ts",
+    "reward-demo": "tsx scripts/reward-demo.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "matter-js": "^0.20.0",
+    "openai": "^4.77.0",
+    "three": "^0.171.0",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/matter-js": "^0.19.8",
+    "@types/node": "^22.10.5",
+    "@types/three": "^0.171.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "vite": "^6.0.7"
+  }
+}
