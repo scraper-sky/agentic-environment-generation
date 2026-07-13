@@ -9,6 +9,7 @@
     "traverse": "tsx src/harness/traverse.ts",
     "dev": "vite",
     "demo": "tsx scripts/demo.ts",
+    "gallery": "tsx scripts/gallery.ts",
     "reward-demo": "tsx scripts/reward-demo.ts",
     "typecheck": "tsc --noEmit"
   },

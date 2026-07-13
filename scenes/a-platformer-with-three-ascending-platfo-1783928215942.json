@@ -1,0 +1,271 @@
+{
+  "bounds": {
+    "width": 800,
+    "height": 600
+  },
+  "gravity": {
+    "x": 0,
+    "y": -1
+  },
+  "player": {
+    "objectId": "player",
+    "controls": "platformer"
+  },
+  "objects": [
+    {
+      "id": "ground",
+      "tags": [
+        "platform"
+      ],
+      "shape": {
+        "kind": "box",
+        "width": 800,
+        "height": 20
+      },
+      "position": {
+        "x": 400,
+        "y": 10
+      },
+      "velocity": {
+        "x": 0,
+        "y": 0
+      },
+      "bodyType": "static",
+      "friction": 0.1,
+      "restitution": 0,
+      "color": "#8B4513",
+      "sensor": false
+    },
+    {
+      "id": "platform-1",
+      "tags": [
+        "platform"
+      ],
+      "shape": {
+        "kind": "box",
+        "width": 100,
+        "height": 20
+      },
+      "position": {
+        "x": 150,
+        "y": 80
+      },
+      "velocity": {
+        "x": 0,
+        "y": 0
+      },
+      "bodyType": "static",
+      "friction": 0.1,
+      "restitution": 0,
+      "color": "#8B4513",
+      "sensor": false
+    },
+    {
+      "id": "platform-2",
+      "tags": [
+        "platform"
+      ],
+      "shape": {
+        "kind": "box",
+        "width": 100,
+        "height": 20
+      },
+      "position": {
+        "x": 350,
+        "y": 160
+      },
+      "velocity": {
+        "x": 0,
+        "y": 0
+      },
+      "bodyType": "static",
+      "friction": 0.1,
+      "restitution": 0,
+      "color": "#8B4513",
+      "sensor": false
+    },
+    {
+      "id": "platform-3",
+      "tags": [
+        "platform"
+      ],
+      "shape": {
+        "kind": "box",
+        "width": 100,
+        "height": 20
+      },
+      "position": {
+        "x": 550,
+        "y": 250
+      },
+      "velocity": {
+        "x": 0,
+        "y": 0
+      },
+      "bodyType": "static",
+      "friction": 0.1,
+      "restitution": 0,
+      "color": "#8B4513",
+      "sensor": false
+    },
+    {
+      "id": "cliff",
+      "tags": [
+        "platform"
+      ],
+      "shape": {
+        "kind": "box",
+        "width": 200,
+        "height": 100
+      },
+      "position": {
+        "x": 700,
+        "y": 350
+      },
+      "velocity": {
+        "x": 0,
+        "y": 0
+      },
+      "bodyType": "static",
+      "friction": 0.1,
+      "restitution": 0,
+      "color": "#8B4513",
+      "sensor": false
+    },
+    {
+      "id": "bridge-1",
+      "tags": [
+        "platform"
+      ],
+      "shape": {
+        "kind": "box",
+        "width": 100,
+        "height": 20
+      },
+      "position": {
+        "x": 600,
+        "y": 303
+      },
+      "velocity": {
+        "x": 0,
+        "y": 0
+      },
+      "bodyType": "static",
+      "friction": 0.1,
+      "restitution": 0,
+      "color": "#8B4513",
+      "sensor": false
+    },
+    {
+      "id": "bridge-2",
+      "tags": [
+        "platform"
+      ],
+      "shape": {
+        "kind": "box",
+        "width": 100,
+        "height": 20
+      },
+      "position": {
+        "x": 650,
+        "y": 357
+      },
+      "velocity": {
+        "x": 0,
+        "y": 0
+      },
+      "bodyType": "static",
+      "friction": 0.1,
+      "restitution": 0,
+      "color": "#8B4513",
+      "sensor": false
+    },
+    {
+      "id": "player",
+      "tags": [
+        "player"
+      ],
+      "shape": {
+        "kind": "circle",
+        "radius": 15
+      },
+      "position": {
+        "x": 150,
+        "y": 105
+      },
+      "velocity": {
+        "x": 0,
+        "y": 0
+      },
+      "bodyType": "dynamic",
+      "friction": 0.1,
+      "restitution": 0,
+      "color": "#4f9dde",
+      "sensor": false
+    },
+    {
+      "id": "spike-pit",
+      "tags": [
+        "hazard",
+        "spike"
+      ],
+      "shape": {
+        "kind": "box",
+        "width": 80,
+        "height": 20
+      },
+      "position": {
+        "x": 450,
+        "y": 60
+      },
+      "velocity": {
+        "x": 0,
+        "y": 0
+      },
+      "bodyType": "static",
+      "friction": 0,
+      "restitution": 0,
+      "color": "#ff4040",
+      "sensor": true
+    },
+    {
+      "id": "flag",
+      "tags": [
+        "goal",
+        "flag"
+      ],
+      "shape": {
+        "kind": "circle",
+        "radius": 20
+      },
+      "position": {
+        "x": 700,
+        "y": 420
+      },
+      "velocity": {
+        "x": 0,
+        "y": 0
+      },
+      "bodyType": "static",
+      "friction": 0.1,
+      "restitution": 0,
+      "color": "#00FF00",
+      "sensor": true
+    }
+  ],
+  "objective": {
+    "type": "reach",
+    "target": "flag",
+    "radius": 25
+  },
+  "hazards": [
+    "spike-pit"
+  ],
+  "maxSteps": 1500,
+  "id": "a-platformer-with-three-ascending-platfo",
+  "prompt": "A platformer with three ascending platforms leading to a flag on a cliff, with a spike pit blocking the second jump.",
+  "metadata": {
+    "generatedAt": "2026-07-13T07:36:55.939Z",
+    "model": "gpt-4o"
+  }
+}

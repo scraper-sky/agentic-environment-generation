@@ -97,12 +97,14 @@
         align-items: center;
         gap: 8px;
         min-width: 0;
+        flex-shrink: 0;
       }
       .toolbar-divider {
         width: 1px;
         align-self: stretch;
         margin: 12px 0;
         background: var(--border-soft);
+        flex-shrink: 0;
       }
       .toolbar-group label {
         font-size: 11.5px;
@@ -114,7 +116,9 @@
         white-space: nowrap;
       }
       #scene-select {
-        max-width: 280px;
+        width: 240px;
+        min-width: 0;
+        max-width: 240px;
         text-overflow: ellipsis;
       }
       #layout {
@@ -239,6 +243,26 @@
         content: "// ";
         color: var(--border);
       }
+      #sidebar details summary {
+        margin: 0;
+        font-family: var(--mono);
+        font-size: 12px;
+        font-weight: 500;
+        color: var(--text-faint);
+        cursor: pointer;
+        list-style: revert;
+      }
+      #sidebar details summary::marker {
+        color: var(--border);
+      }
+      #sidebar details[open] summary {
+        margin-bottom: 10px;
+      }
+      #sidebar details .details-hint {
+        font-size: 11px;
+        color: var(--text-faint);
+        font-weight: 400;
+      }
       select,
       button,
       textarea {
@@ -293,6 +317,8 @@
         border: 1px solid var(--border);
         background: var(--card-hover);
         color: var(--text);
+        white-space: nowrap;
+        flex-shrink: 0;
         transition: background 0.15s ease, border-color 0.15s ease, opacity 0.15s ease, transform 0.1s ease;
       }
       button:hover:not(:disabled) {
@@ -326,6 +352,8 @@
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
+        min-width: 0;
+        flex: 1 1 auto;
       }
       #verdict {
         font-family: var(--mono);
@@ -333,6 +361,7 @@
         font-weight: 600;
         letter-spacing: 0.01em;
         white-space: nowrap;
+        flex-shrink: 0;
       }
       .small-status {
         font-size: 12px;
@@ -546,8 +575,10 @@
         <label>scene <select id="scene-select"></select></label>
       </div>
       <div class="toolbar-group">
-        <button id="traverse-btn">Traverse</button>
-        <button id="replay-btn" style="display: none">Replay trace</button>
+        <button id="traverse-btn" title="Let the AI agent attempt this scene">Agent</button>
+        <button id="play-btn" title="Drive the scene yourself with the keyboard">Play</button>
+        <button id="stop-play-btn" style="display: none">Stop &amp; save</button>
+        <button id="replay-btn" style="display: none">Replay</button>
       </div>
       <div class="toolbar-divider"></div>
       <span id="verdict"></span>
@@ -568,16 +599,6 @@
       <div id="app"><div id="canvas-frame"></div></div>
       <div id="sidebar">
         <section class="card">
-          <h3>traversal log</h3>
-          <div class="terminal-window">
-            <div class="terminal-titlebar">
-              <span class="dot dot-red"></span><span class="dot dot-yellow"></span><span class="dot dot-green"></span>
-              <span class="terminal-title">agent@traverse</span>
-            </div>
-            <div id="terminal"><div class="terminal-line t-placeholder">$ waiting for a traverse run…</div></div>
-          </div>
-        </section>
-        <section class="card">
           <h3>generate a scene</h3>
           <textarea id="prompt-input" rows="3" placeholder="Describe a scene, e.g. a platformer with two gaps and a spike hazard"></textarea>
           <button id="generate-btn" class="primary">Generate</button>
@@ -589,31 +610,45 @@
           <div id="rating-status" class="small-status">How well does it match what you asked for?</div>
         </section>
         <section class="card">
-          <h3>retrieval policy</h3>
-          <div class="equation-block">
-            <div id="eq-score" class="katex-eq"></div>
-            <div id="eq-weight" class="katex-eq"></div>
-          </div>
-          <div class="const-note eq-caveat">
-            <code>w<sub>i</sub></code> is diagnostic, not a random draw: it's each exemplar's share of total influence across the <em>whole</em> rated library, shown per exemplar below. Which examples get used is still deterministic — top-scoring by <code>score<sub>i</sub></code>, same order <code>w<sub>i</sub></code> would rank them in.
-          </div>
-          <div class="reward-def">
-            <div id="eq-reward" class="katex-eq"></div>
-            <span class="const-note">your star rating counts ~2.3&times; more than the free signal (did it validate cleanly on the first try, no repairs needed) &mdash; 70% vs. 30% of the total</span>
-          </div>
+          <details>
+            <summary>agent traversal log</summary>
+            <div class="terminal-window">
+              <div class="terminal-titlebar">
+                <span class="dot dot-red"></span><span class="dot dot-yellow"></span><span class="dot dot-green"></span>
+                <span class="terminal-title">agent@traverse</span>
+              </div>
+              <div id="terminal"><div class="terminal-line t-placeholder">$ waiting for a traverse run…</div></div>
+            </div>
+          </details>
+        </section>
+        <section class="card">
+          <details>
+            <summary>retrieval policy <span class="details-hint">— how generation learns from ratings</span></summary>
+            <div class="equation-block">
+              <div id="eq-score" class="katex-eq"></div>
+              <div id="eq-weight" class="katex-eq"></div>
+            </div>
+            <div class="const-note eq-caveat">
+              <code>w<sub>i</sub></code> is diagnostic, not a random draw: it's each exemplar's share of total influence across the <em>whole</em> rated library, shown per exemplar below. Which examples get used is still deterministic — top-scoring by <code>score<sub>i</sub></code>, same order <code>w<sub>i</sub></code> would rank them in.
+            </div>
+            <div class="reward-def">
+              <div id="eq-reward" class="katex-eq"></div>
+              <span class="const-note">your star rating counts ~2.3&times; more than the free signal (did it validate cleanly on the first try, no repairs needed) &mdash; 70% vs. 30% of the total</span>
+            </div>
 
-          <div class="slider-row">
-            <label for="lambda-slider"><span id="lambda-symbol" class="katex-inline"></span> <span id="lambda-value">0.60</span></label>
-            <input type="range" id="lambda-slider" min="0" max="1" step="0.05" value="0.6" />
-            <div class="const-note">low → chase the highest-rated examples regardless of topic &nbsp;·&nbsp; high → only use examples that actually match this prompt</div>
-          </div>
-          <div class="slider-row">
-            <label for="tau-slider"><span id="tau-symbol" class="katex-inline"></span> <span id="tau-value">0.20</span></label>
-            <input type="range" id="tau-slider" min="0.05" max="1" step="0.05" value="0.2" />
-            <div class="const-note">low → only the single best-scoring example gets used &nbsp;·&nbsp; high → every rated example gets some influence</div>
-          </div>
-          <div id="policy-summary" class="small-status"></div>
-          <div id="policy-exemplars"></div>
+            <div class="slider-row">
+              <label for="lambda-slider"><span id="lambda-symbol" class="katex-inline"></span> <span id="lambda-value">0.60</span></label>
+              <input type="range" id="lambda-slider" min="0" max="1" step="0.05" value="0.6" />
+              <div class="const-note">Lower values favor the highest-rated examples regardless of topic. Higher values restrict selection to examples that actually match this prompt.</div>
+            </div>
+            <div class="slider-row">
+              <label for="tau-slider"><span id="tau-symbol" class="katex-inline"></span> <span id="tau-value">0.20</span></label>
+              <input type="range" id="tau-slider" min="0.05" max="1" step="0.05" value="0.2" />
+              <div class="const-note">Lower values concentrate influence on the single best-scoring example. Higher values spread some influence across every rated example.</div>
+            </div>
+            <div id="policy-summary" class="small-status"></div>
+            <div id="policy-exemplars"></div>
+          </details>
         </section>
       </div>
     </div>

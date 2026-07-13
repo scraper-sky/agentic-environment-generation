@@ -1,0 +1,197 @@
+{
+  "bounds": {
+    "width": 900,
+    "height": 500
+  },
+  "gravity": {
+    "x": 0,
+    "y": -1
+  },
+  "player": {
+    "objectId": "player",
+    "controls": "platformer"
+  },
+  "objects": [
+    {
+      "id": "lake",
+      "tags": [
+        "water",
+        "lake"
+      ],
+      "shape": {
+        "kind": "box",
+        "width": 400,
+        "height": 100
+      },
+      "position": {
+        "x": 200,
+        "y": 50
+      },
+      "velocity": {
+        "x": 0,
+        "y": 0
+      },
+      "bodyType": "static",
+      "friction": 0,
+      "restitution": 0,
+      "color": "#4f9dde",
+      "sensor": true
+    },
+    {
+      "id": "dock",
+      "tags": [
+        "platform"
+      ],
+      "shape": {
+        "kind": "box",
+        "width": 100,
+        "height": 20
+      },
+      "position": {
+        "x": 250,
+        "y": 100
+      },
+      "velocity": {
+        "x": 0,
+        "y": 0
+      },
+      "bodyType": "static",
+      "friction": 0.1,
+      "restitution": 0,
+      "color": "#8b5a2b",
+      "sensor": false
+    },
+    {
+      "id": "rock-1",
+      "tags": [
+        "rock"
+      ],
+      "shape": {
+        "kind": "box",
+        "width": 30,
+        "height": 30
+      },
+      "position": {
+        "x": 450,
+        "y": 65
+      },
+      "velocity": {
+        "x": 0,
+        "y": 0
+      },
+      "bodyType": "static",
+      "friction": 0.5,
+      "restitution": 0,
+      "color": "#7f8c8d",
+      "sensor": true
+    },
+    {
+      "id": "rock-2",
+      "tags": [
+        "rock"
+      ],
+      "shape": {
+        "kind": "box",
+        "width": 40,
+        "height": 20
+      },
+      "position": {
+        "x": 550,
+        "y": 60
+      },
+      "velocity": {
+        "x": 0,
+        "y": 0
+      },
+      "bodyType": "static",
+      "friction": 0.5,
+      "restitution": 0,
+      "color": "#7f8c8d",
+      "sensor": true
+    },
+    {
+      "id": "ground",
+      "tags": [
+        "platform"
+      ],
+      "shape": {
+        "kind": "box",
+        "width": 900,
+        "height": 20
+      },
+      "position": {
+        "x": 450,
+        "y": 10
+      },
+      "velocity": {
+        "x": 0,
+        "y": 0
+      },
+      "bodyType": "static",
+      "friction": 0.1,
+      "restitution": 0,
+      "color": "#6b8e23",
+      "sensor": false
+    },
+    {
+      "id": "campfire",
+      "tags": [
+        "goal",
+        "campfire"
+      ],
+      "shape": {
+        "kind": "circle",
+        "radius": 25
+      },
+      "position": {
+        "x": 800,
+        "y": 35
+      },
+      "velocity": {
+        "x": 0,
+        "y": 0
+      },
+      "bodyType": "static",
+      "friction": 0,
+      "restitution": 0,
+      "color": "#e25822",
+      "sensor": true
+    },
+    {
+      "id": "player",
+      "tags": [
+        "player"
+      ],
+      "shape": {
+        "kind": "circle",
+        "radius": 15
+      },
+      "position": {
+        "x": 250,
+        "y": 125
+      },
+      "velocity": {
+        "x": 0,
+        "y": 0
+      },
+      "bodyType": "dynamic",
+      "friction": 0.1,
+      "restitution": 0,
+      "color": "#3498db",
+      "sensor": false
+    }
+  ],
+  "objective": {
+    "type": "reach",
+    "target": "campfire",
+    "radius": 30
+  },
+  "hazards": [],
+  "maxSteps": 1500,
+  "id": "a-tranquil-lakeside-with-a-fishing-dock-",
+  "prompt": "A tranquil lakeside with a fishing dock, some rocks, and a distant campfire to reach.",
+  "metadata": {
+    "generatedAt": "2026-07-13T07:41:03.238Z",
+    "model": "gpt-4o"
+  }
+}

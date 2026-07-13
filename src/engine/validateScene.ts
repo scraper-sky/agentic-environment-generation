@@ -87,6 +87,59 @@ function canJumpToPoint(a: SceneObject, point: { x: number; y: number }, radius:
   return horizontalGap <= MAX_HORIZONTAL_GAP && verticalStep <= MAX_UPWARD_STEP;
 }
 
+const BRIDGE_WIDTH = 100;
+const BRIDGE_HEIGHT = 20;
+/** Suggest steps comfortably inside the max jump range, not right at the edge — leaves slack for the target's own radius and any minor repositioning the model does on top of this suggestion. */
+const BRIDGE_STEP_MARGIN = 0.7;
+
+/**
+ * When the target isn't reachable, compute actual intermediate-platform
+ * positions that would bridge the gap, rather than just describing the
+ * constraint and hoping the model does that arithmetic itself. Mirrors
+ * `findSupportSuggestion`'s approach below, which fixes spawn issues
+ * reliably in 1-2 repair attempts — repeated testing showed the model
+ * repeatedly nudging the target's position by a few pixels per retry instead
+ * of adding a platform when only told the *rule*; handing it exact numbers
+ * closes that gap the same way it did for spawn placement.
+ */
+/** Beyond this many single-jump steps in a row, a chain of individually-floating platforms is fragile in practice (one missed jump anywhere in a long chain drops the player past everything below, often out of the world entirely) even though each individual step is technically within jump range — better to flag it and suggest a smaller scene than hand back a long, brittle suggestion. */
+const MAX_BRIDGE_STEPS = 5;
+
+function suggestBridgePlatforms(
+  reachable: SceneObject[],
+  target: { x: number; y: number },
+  radius: number,
+): { platforms: Array<{ x: number; y: number; width: number; height: number }>; truncated: boolean } {
+  let from = reachable[0]!;
+  let bestDist = Infinity;
+  for (const p of reachable) {
+    const d = Math.hypot(p.position.x - target.x, p.position.y - target.y);
+    if (d < bestDist) {
+      bestDist = d;
+      from = p;
+    }
+  }
+
+  const startX = from.position.x;
+  const startTopY = platformTopY(from);
+  const dx = target.x - startX;
+  const dy = target.y - startTopY; // positive = target sits higher than the starting platform
+
+  const stepsForX = Math.ceil(Math.abs(dx) / (MAX_HORIZONTAL_GAP * BRIDGE_STEP_MARGIN));
+  const stepsForY = dy > 0 ? Math.ceil(dy / (MAX_UPWARD_STEP * BRIDGE_STEP_MARGIN)) : 1;
+  const rawSteps = Math.max(stepsForX, stepsForY, 2);
+  const truncated = rawSteps > MAX_BRIDGE_STEPS;
+  const steps = Math.min(rawSteps, MAX_BRIDGE_STEPS);
+
+  const platforms: Array<{ x: number; y: number; width: number; height: number }> = [];
+  for (let i = 1; i < steps; i++) {
+    const t = i / steps;
+    const topY = startTopY + dy * (rawSteps === steps ? t : (t * steps) / rawSteps);
+    platforms.push({ x: Math.round(startX + dx * (rawSteps === steps ? t : (t * steps) / rawSteps)), y: Math.round(topY - BRIDGE_HEIGHT / 2), width: BRIDGE_WIDTH, height: BRIDGE_HEIGHT });
+  }
+  return { platforms, truncated };
+}
+
 /** BFS over jump edges from the platform the player spawns on — which platforms could a jumping agent plausibly reach at all? */
 function reachablePlatforms(spawn: SceneObject, platforms: SceneObject[]): SceneObject[] {
   const visited = new Map<string, SceneObject>([[spawn.id, spawn]]);
@@ -151,6 +204,26 @@ export function validateScene(scene: GeneratedScene): ValidationIssue[] {
   checkRef("objective.target", scene.objective.target);
   if (scene.objective.type === "collect" && scene.objective.near) {
     checkRef("objective.near", scene.objective.near);
+
+    // Both `target` and `near` are frequently static (a can on a table, a key
+    // by a well) — if they are, this distance never changes during play. A
+    // scene generated with them already farther apart than `nearRadius` is
+    // not just hard, it's mathematically unwinnable: checkObjective() re-reads
+    // this exact distance every tick and it can never satisfy the threshold no
+    // matter how the player/agent moves, silently burning the whole decision
+    // budget (or a human's whole attempt) on a scene that could never succeed.
+    const target = byId.get(scene.objective.target);
+    const near = byId.get(scene.objective.near);
+    if (target && near) {
+      const actualDistance = Math.hypot(target.position.x - near.position.x, target.position.y - near.position.y);
+      const nearRadius = scene.objective.nearRadius ?? 60;
+      if (actualDistance > nearRadius) {
+        issues.push({
+          path: "objective.nearRadius",
+          message: `objective.target '${target.id}' is ${actualDistance.toFixed(1)} units from objective.near '${near.id}', which exceeds nearRadius (${nearRadius}). If both are static this can never become true during play, no matter how the player moves — either move '${target.id}' within ${nearRadius} units of '${near.id}', or raise nearRadius to at least ${Math.ceil(actualDistance)}.`,
+        });
+      }
+    }
   }
   scene.hazards.forEach((id, i) => checkRef(`hazards[${i}]`, id));
 
@@ -158,7 +231,14 @@ export function validateScene(scene: GeneratedScene): ValidationIssue[] {
     for (const other of scene.objects) {
       if (other.id === player.id || other.sensor || other.bodyType !== "static") continue;
       if (overlaps(player, other)) {
-        issues.push({ path: "player.position", message: `Player spawn overlaps solid object '${other.id}'` });
+        // Embedding is possible even while technically "resting" within
+        // SUPPORT_TOLERANCE below, which would otherwise leave this as the
+        // only issue reported with no concrete number to fix it by — testing
+        // showed that alone gets the model stuck repeating the same overlap
+        // across every repair attempt instead of converging.
+        const fix = findSupportSuggestion(player, scene.objects);
+        const fixText = fix ? ` Set player.position.y to exactly ${fix.suggestedY} (over platform '${fix.platformId}') to rest exactly on its surface without embedding in it.` : "";
+        issues.push({ path: "player.position", message: `Player spawn overlaps solid object '${other.id}'.${fixText}` });
       }
     }
 
@@ -178,9 +258,16 @@ export function validateScene(scene: GeneratedScene): ValidationIssue[] {
         const reachable = reachablePlatforms(spawnPlatform, platforms);
         const target = byId.get(scene.objective.target);
         if (target && !reachable.some((p) => canJumpToPoint(p, target.position, scene.objective.radius))) {
+          const { platforms: bridges, truncated } = suggestBridgePlatforms(reachable, target.position, scene.objective.radius);
+          const bridgeText = bridges
+            .map((b, i) => `bridge-${i + 1}: {"id": "bridge-${i + 1}", "tags": ["platform"], "shape": {"kind": "box", "width": ${b.width}, "height": ${b.height}}, "position": {"x": ${b.x}, "y": ${b.y}}, "bodyType": "static", "sensor": false}`)
+            .join("; ");
+          const fixInstruction = truncated
+            ? `The gap is too large to bridge with a reasonable number of single-jump platforms. Instead of a long fragile chain, shrink the distance: move '${target.id}' much closer to a reachable platform (well within ${MAX_HORIZONTAL_GAP} horizontal / ${MAX_UPWARD_STEP} vertical units), or reduce the scene's overall scale. As a partial start in the right direction, adding platforms like this would help — ${bridgeText} — but you likely also need to move the target closer rather than only adding more of these.`
+            : `Fix this by ADDING platform object(s) at these exact positions to bridge the gap (don't just move the target) — ${bridgeText}. Add all of these to the scene's objects array unchanged, keeping the target where it is.`;
           issues.push({
             path: "objective.target",
-            message: `Objective target '${target.id}' at (${target.position.x}, ${target.position.y}) is not reachable by walking/jumping from the platforms connected to the player's spawn platform '${spawnPlatform.id}' (reachable platforms: ${reachable.map((p) => p.id).join(", ") || "none"}). Either move the target within about ${MAX_HORIZONTAL_GAP} horizontal units and ${MAX_UPWARD_STEP} units above a reachable platform's surface, or add intermediate platforms bridging the gap so every platform on the path to the target is reachable from the one before it.`,
+            message: `Objective target '${target.id}' at (${target.position.x}, ${target.position.y}) is not reachable by walking/jumping from the platforms connected to the player's spawn platform '${spawnPlatform.id}' (reachable platforms: ${reachable.map((p) => p.id).join(", ") || "none"}). ${fixInstruction}`,
           });
         }
       }

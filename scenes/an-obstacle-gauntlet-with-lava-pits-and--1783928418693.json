@@ -1,0 +1,226 @@
+{
+  "bounds": {
+    "width": 800,
+    "height": 400
+  },
+  "gravity": {
+    "x": 0,
+    "y": -1
+  },
+  "player": {
+    "objectId": "player",
+    "controls": "platformer"
+  },
+  "objects": [
+    {
+      "id": "player",
+      "tags": [
+        "player"
+      ],
+      "shape": {
+        "kind": "circle",
+        "radius": 15
+      },
+      "position": {
+        "x": 50,
+        "y": 125
+      },
+      "velocity": {
+        "x": 0,
+        "y": 0
+      },
+      "bodyType": "dynamic",
+      "friction": 0.1,
+      "restitution": 0,
+      "color": "#4f9dde",
+      "sensor": false
+    },
+    {
+      "id": "platform-1",
+      "tags": [
+        "platform"
+      ],
+      "shape": {
+        "kind": "box",
+        "width": 100,
+        "height": 20
+      },
+      "position": {
+        "x": 50,
+        "y": 100
+      },
+      "velocity": {
+        "x": 0,
+        "y": 0
+      },
+      "bodyType": "static",
+      "friction": 0.1,
+      "restitution": 0,
+      "color": "#8d6e63",
+      "sensor": false
+    },
+    {
+      "id": "platform-2",
+      "tags": [
+        "platform"
+      ],
+      "shape": {
+        "kind": "box",
+        "width": 150,
+        "height": 20
+      },
+      "position": {
+        "x": 250,
+        "y": 150
+      },
+      "velocity": {
+        "x": 0,
+        "y": 0
+      },
+      "bodyType": "static",
+      "friction": 0.1,
+      "restitution": 0,
+      "color": "#8d6e63",
+      "sensor": false
+    },
+    {
+      "id": "platform-3",
+      "tags": [
+        "platform"
+      ],
+      "shape": {
+        "kind": "box",
+        "width": 150,
+        "height": 20
+      },
+      "position": {
+        "x": 500,
+        "y": 200
+      },
+      "velocity": {
+        "x": 0,
+        "y": 0
+      },
+      "bodyType": "static",
+      "friction": 0.1,
+      "restitution": 0,
+      "color": "#8d6e63",
+      "sensor": false
+    },
+    {
+      "id": "platform-4",
+      "tags": [
+        "platform"
+      ],
+      "shape": {
+        "kind": "box",
+        "width": 100,
+        "height": 20
+      },
+      "position": {
+        "x": 700,
+        "y": 250
+      },
+      "velocity": {
+        "x": 0,
+        "y": 0
+      },
+      "bodyType": "static",
+      "friction": 0.1,
+      "restitution": 0,
+      "color": "#8d6e63",
+      "sensor": false
+    },
+    {
+      "id": "lava-pit-1",
+      "tags": [
+        "hazard",
+        "lava"
+      ],
+      "shape": {
+        "kind": "box",
+        "width": 150,
+        "height": 30
+      },
+      "position": {
+        "x": 150,
+        "y": 85
+      },
+      "velocity": {
+        "x": 0,
+        "y": 0
+      },
+      "bodyType": "static",
+      "friction": 0,
+      "restitution": 0,
+      "color": "#e74c3c",
+      "sensor": true
+    },
+    {
+      "id": "lava-pit-2",
+      "tags": [
+        "hazard",
+        "lava"
+      ],
+      "shape": {
+        "kind": "box",
+        "width": 200,
+        "height": 30
+      },
+      "position": {
+        "x": 350,
+        "y": 135
+      },
+      "velocity": {
+        "x": 0,
+        "y": 0
+      },
+      "bodyType": "static",
+      "friction": 0,
+      "restitution": 0,
+      "color": "#e74c3c",
+      "sensor": true
+    },
+    {
+      "id": "exit-door",
+      "tags": [
+        "goal",
+        "exit"
+      ],
+      "shape": {
+        "kind": "box",
+        "width": 40,
+        "height": 80
+      },
+      "position": {
+        "x": 775,
+        "y": 300
+      },
+      "velocity": {
+        "x": 0,
+        "y": 0
+      },
+      "bodyType": "static",
+      "friction": 0,
+      "restitution": 0,
+      "color": "#2ecc71",
+      "sensor": true
+    }
+  ],
+  "objective": {
+    "type": "reach",
+    "target": "exit-door",
+    "radius": 20
+  },
+  "hazards": [
+    "lava-pit-1",
+    "lava-pit-2"
+  ],
+  "maxSteps": 2000,
+  "id": "an-obstacle-gauntlet-with-lava-pits-and-",
+  "prompt": "An obstacle gauntlet with lava pits and a narrow platform path to an exit door.",
+  "metadata": {
+    "generatedAt": "2026-07-13T07:40:18.693Z",
+    "model": "gpt-4o"
+  }
+}

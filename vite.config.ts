@@ -53,6 +53,7 @@ function harnessApiPlugin(): Plugin {
             scene: result.scene,
             scenePath: result.scenePath,
             attempts: result.attempts,
+            motif: result.motif,
             retrievedExemplars: result.retrievedExemplars.map((e) => ({
               prompt: e.entry.prompt,
               similarity: e.similarity,
@@ -146,6 +147,23 @@ function harnessApiPlugin(): Plugin {
           } else {
             sendJson(res, 500, { ok: false, error: message });
           }
+        }
+      });
+
+      server.middlewares.use("/api/save-trace", async (req, res) => {
+        if (req.method !== "POST") return sendJson(res, 405, { ok: false, error: "POST only" });
+        try {
+          const body = await readJsonBody(req);
+          const trace = body["trace"] as { sceneId?: unknown } | undefined;
+          if (!trace || typeof trace.sceneId !== "string") throw new Error("Missing or invalid 'trace'");
+
+          const tracesDir = join(PROJECT_ROOT, "traces");
+          mkdirSync(tracesDir, { recursive: true });
+          const tracePath = join(tracesDir, `${trace.sceneId}-${Date.now()}.json`);
+          writeFileSync(tracePath, JSON.stringify(trace, null, 2) + "\n");
+          sendJson(res, 200, { ok: true });
+        } catch (err) {
+          sendJson(res, 500, { ok: false, error: err instanceof Error ? err.message : String(err) });
         }
       });
 

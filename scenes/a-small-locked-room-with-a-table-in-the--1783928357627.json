@@ -1,0 +1,198 @@
+{
+  "bounds": {
+    "width": 500,
+    "height": 500
+  },
+  "gravity": {
+    "x": 0,
+    "y": 0
+  },
+  "player": {
+    "objectId": "player",
+    "controls": "topdown"
+  },
+  "objects": [
+    {
+      "id": "player",
+      "tags": [
+        "player"
+      ],
+      "shape": {
+        "kind": "circle",
+        "radius": 15
+      },
+      "position": {
+        "x": 80,
+        "y": 80
+      },
+      "velocity": {
+        "x": 0,
+        "y": 0
+      },
+      "bodyType": "dynamic",
+      "friction": 0.1,
+      "restitution": 0,
+      "color": "#4f9dde",
+      "sensor": false
+    },
+    {
+      "id": "wall-bottom",
+      "tags": [
+        "wall"
+      ],
+      "shape": {
+        "kind": "box",
+        "width": 500,
+        "height": 20
+      },
+      "position": {
+        "x": 250,
+        "y": 10
+      },
+      "velocity": {
+        "x": 0,
+        "y": 0
+      },
+      "bodyType": "static",
+      "friction": 0,
+      "restitution": 0,
+      "color": "#5a5a5a",
+      "sensor": false
+    },
+    {
+      "id": "wall-top",
+      "tags": [
+        "wall"
+      ],
+      "shape": {
+        "kind": "box",
+        "width": 500,
+        "height": 20
+      },
+      "position": {
+        "x": 250,
+        "y": 490
+      },
+      "velocity": {
+        "x": 0,
+        "y": 0
+      },
+      "bodyType": "static",
+      "friction": 0,
+      "restitution": 0,
+      "color": "#5a5a5a",
+      "sensor": false
+    },
+    {
+      "id": "wall-left",
+      "tags": [
+        "wall"
+      ],
+      "shape": {
+        "kind": "box",
+        "width": 20,
+        "height": 500
+      },
+      "position": {
+        "x": 10,
+        "y": 250
+      },
+      "velocity": {
+        "x": 0,
+        "y": 0
+      },
+      "bodyType": "static",
+      "friction": 0,
+      "restitution": 0,
+      "color": "#5a5a5a",
+      "sensor": false
+    },
+    {
+      "id": "wall-right",
+      "tags": [
+        "wall"
+      ],
+      "shape": {
+        "kind": "box",
+        "width": 20,
+        "height": 500
+      },
+      "position": {
+        "x": 490,
+        "y": 250
+      },
+      "velocity": {
+        "x": 0,
+        "y": 0
+      },
+      "bodyType": "static",
+      "friction": 0,
+      "restitution": 0,
+      "color": "#5a5a5a",
+      "sensor": false
+    },
+    {
+      "id": "table",
+      "tags": [
+        "table"
+      ],
+      "shape": {
+        "kind": "box",
+        "width": 100,
+        "height": 50
+      },
+      "position": {
+        "x": 450,
+        "y": 450
+      },
+      "velocity": {
+        "x": 0,
+        "y": 0
+      },
+      "bodyType": "static",
+      "friction": 0,
+      "restitution": 0,
+      "color": "#8d6e63",
+      "sensor": false
+    },
+    {
+      "id": "can",
+      "tags": [
+        "can",
+        "collectible"
+      ],
+      "shape": {
+        "kind": "circle",
+        "radius": 10
+      },
+      "position": {
+        "x": 450,
+        "y": 475
+      },
+      "velocity": {
+        "x": 0,
+        "y": 0
+      },
+      "bodyType": "static",
+      "friction": 0,
+      "restitution": 0,
+      "color": "#f1c40f",
+      "sensor": true
+    }
+  ],
+  "objective": {
+    "type": "collect",
+    "target": "can",
+    "near": "table",
+    "radius": 20,
+    "nearRadius": 60
+  },
+  "hazards": [],
+  "maxSteps": 2000,
+  "id": "a-small-locked-room-with-a-table-in-the-",
+  "prompt": "A small locked room with a table in the corner and a can sitting on top of it that must be grabbed.",
+  "metadata": {
+    "generatedAt": "2026-07-13T07:39:17.625Z",
+    "model": "gpt-4o"
+  }
+}

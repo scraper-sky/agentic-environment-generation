@@ -1,0 +1,118 @@
+{
+  "model": "gpt-4o",
+  "maxDecisions": 50,
+  "successCount": 4,
+  "total": 10,
+  "entries": [
+    {
+      "prompt": "A platformer with three ascending platforms leading to a flag on a cliff, with a spike pit blocking the second jump.",
+      "scenePath": "scenes/a-platformer-with-three-ascending-platfo-1783928215942.json",
+      "svgPath": "gallery/a-platformer-with-three-ascending-platfo.svg",
+      "motif": "gauntlet",
+      "controls": "platformer",
+      "objective": "reach",
+      "objects": 10,
+      "verdict": "FAIL (decision-budget-exceeded)",
+      "decisions": 50
+    },
+    {
+      "prompt": "A person wandering through a foggy pine forest looking for a lost key near an old well.",
+      "scenePath": "scenes/a-person-wandering-through-a-foggy-pine--1783928276669.json",
+      "svgPath": "gallery/a-person-wandering-through-a-foggy-pine-.svg",
+      "motif": "enclosed-maze",
+      "controls": "topdown",
+      "objective": "collect",
+      "objects": 11,
+      "verdict": "FAIL (decision-budget-exceeded)",
+      "decisions": 50
+    },
+    {
+      "prompt": "A desert canyon the player must jump across to reach an oasis with a flag.",
+      "scenePath": "scenes/a-desert-canyon-the-player-must-jump-acr-1783928335214.json",
+      "svgPath": "gallery/a-desert-canyon-the-player-must-jump-acr.svg",
+      "motif": "branching-paths",
+      "controls": "platformer",
+      "objective": "reach",
+      "objects": 10,
+      "verdict": "SUCCESS",
+      "decisions": 17
+    },
+    {
+      "prompt": "A small locked room with a table in the corner and a can sitting on top of it that must be grabbed.",
+      "scenePath": "scenes/a-small-locked-room-with-a-table-in-the--1783928357627.json",
+      "svgPath": "gallery/a-small-locked-room-with-a-table-in-the-.svg",
+      "motif": "staircase-ascent",
+      "controls": "topdown",
+      "objective": "collect",
+      "objects": 7,
+      "verdict": "FAIL (decision-budget-exceeded)",
+      "decisions": 50
+    },
+    {
+      "prompt": "An obstacle gauntlet with lava pits and a narrow platform path to an exit door.",
+      "scenePath": "scenes/an-obstacle-gauntlet-with-lava-pits-and--1783928418693.json",
+      "svgPath": "gallery/an-obstacle-gauntlet-with-lava-pits-and-.svg",
+      "motif": "enclosed-maze",
+      "controls": "platformer",
+      "objective": "reach",
+      "objects": 8,
+      "verdict": "FAIL (timeout)",
+      "decisions": 40
+    },
+    {
+      "prompt": "A tranquil lakeside with a fishing dock, some rocks, and a distant campfire to reach.",
+      "scenePath": "scenes/a-tranquil-lakeside-with-a-fishing-dock--1783928463239.json",
+      "svgPath": "gallery/a-tranquil-lakeside-with-a-fishing-dock-.svg",
+      "motif": "gauntlet",
+      "controls": "platformer",
+      "objective": "reach",
+      "objects": 7,
+      "verdict": "SUCCESS",
+      "decisions": 33
+    },
+    {
+      "prompt": "A vertical tower climb with stacked platforms rising toward a flag at the top.",
+      "scenePath": "scenes/a-vertical-tower-climb-with-stacked-plat-1783928513913.json",
+      "svgPath": "gallery/a-vertical-tower-climb-with-stacked-plat.svg",
+      "motif": "staircase-ascent",
+      "controls": "platformer",
+      "objective": "reach",
+      "objects": 8,
+      "verdict": "FAIL (timeout)",
+      "decisions": 25
+    },
+    {
+      "prompt": "A maze of hedges in a garden, with a fountain goal at the center.",
+      "scenePath": "scenes/a-maze-of-hedges-in-a-garden-with-a-foun-1783928571411.json",
+      "svgPath": "gallery/a-maze-of-hedges-in-a-garden-with-a-foun.svg",
+      "motif": "open-expanse",
+      "controls": "topdown",
+      "objective": "reach",
+      "objects": 12,
+      "verdict": "FAIL (decision-budget-exceeded)",
+      "decisions": 50
+    },
+    {
+      "prompt": "A rocky mountain pass with boulders scattered around, ending at a cave entrance.",
+      "scenePath": "scenes/a-rocky-mountain-pass-with-boulders-scat-1783928626217.json",
+      "svgPath": "gallery/a-rocky-mountain-pass-with-boulders-scat.svg",
+      "motif": "collect-and-return",
+      "controls": "platformer",
+      "objective": "reach",
+      "objects": 7,
+      "verdict": "SUCCESS",
+      "decisions": 23
+    },
+    {
+      "prompt": "An open meadow at sunset with scattered trees and a picnic basket to collect near a blanket.",
+      "scenePath": "scenes/an-open-meadow-at-sunset-with-scattered--1783928652756.json",
+      "svgPath": "gallery/an-open-meadow-at-sunset-with-scattered-.svg",
+      "motif": "open-expanse",
+      "controls": "topdown",
+      "objective": "collect",
+      "objects": 10,
+      "verdict": "SUCCESS",
+      "decisions": 20
+    }
+  ]
+}

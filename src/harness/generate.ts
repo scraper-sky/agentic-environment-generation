@@ -6,6 +6,7 @@ import type { ChatCompletionMessageParam } from "openai/resources/index";
 import { GeneratedSceneSchema, SceneSchema, type GeneratedScene, type Scene } from "../schema/scene.js";
 import { validateScene } from "../engine/validateScene.js";
 import { getOpenAIClient, OPENAI_MODEL } from "./openaiClient.js";
+import { pickMotif } from "./motifs.js";
 import {
   DEFAULT_LAMBDA,
   DEFAULT_TAU,
@@ -24,7 +25,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const SCENES_DIR = join(PROJECT_ROOT, "scenes");
 const SYSTEM_PROMPT = readFileSync(join(__dirname, "prompts", "generate.system.md"), "utf-8");
 
-const MAX_ATTEMPTS = 3;
+const MAX_ATTEMPTS = 4;
 const MAX_EXEMPLARS = 3;
 
 function slugify(text: string): string {
@@ -69,6 +70,7 @@ export interface GenerateResult {
   scenePath: string;
   attempts: number;
   retrievedExemplars: ScoredExemplar[];
+  motif: string;
 }
 
 export async function generateScene(prompt: string, options: { outPath?: string; policyParams?: PolicyParams } = {}): Promise<GenerateResult> {
@@ -78,9 +80,14 @@ export async function generateScene(prompt: string, options: { outPath?: string;
   const promptEmbedding = await embedPrompt(prompt);
   const scored = scoreLibrary(promptEmbedding, loadLibrary(), policyParams);
   const exemplars = topExemplars(scored, MAX_EXEMPLARS);
+  const motif = pickMotif();
 
   const messages: ChatCompletionMessageParam[] = [
     { role: "system", content: SYSTEM_PROMPT },
+    {
+      role: "system",
+      content: `Structural scaffold for this scene: "${motif.name}" — ${motif.description} Use this as your default spatial layout so repeated prompts don't all collapse into the same shape, but adapt or drop it if it genuinely conflicts with what the prompt below actually asks for — the prompt always wins.`,
+    },
     ...buildExemplarMessages(exemplars),
     { role: "user", content: prompt },
   ];
@@ -144,7 +151,7 @@ export async function generateScene(prompt: string, options: { outPath?: string;
     attempts,
   });
 
-  return { scene, scenePath, attempts, retrievedExemplars: exemplars };
+  return { scene, scenePath, attempts, retrievedExemplars: exemplars, motif: motif.name };
 }
 
 async function main() {
@@ -165,7 +172,7 @@ async function main() {
   const result = await generateScene(prompt, { outPath: outPath ?? undefined });
 
   console.log(`Wrote ${result.scenePath}`);
-  console.log(`  objects: ${result.scene.objects.length}, objective: ${result.scene.objective.type} -> ${result.scene.objective.target}`);
+  console.log(`  objects: ${result.scene.objects.length}, objective: ${result.scene.objective.type} -> ${result.scene.objective.target}, motif: ${result.motif}`);
   if (result.retrievedExemplars.length > 0) {
     const top = result.retrievedExemplars[0]!;
     console.log(

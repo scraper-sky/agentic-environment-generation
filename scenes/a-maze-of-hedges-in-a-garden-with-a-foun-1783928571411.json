@@ -1,0 +1,316 @@
+{
+  "bounds": {
+    "width": 700,
+    "height": 700
+  },
+  "gravity": {
+    "x": 0,
+    "y": 0
+  },
+  "player": {
+    "objectId": "player",
+    "controls": "topdown"
+  },
+  "objects": [
+    {
+      "id": "player",
+      "tags": [
+        "player"
+      ],
+      "shape": {
+        "kind": "circle",
+        "radius": 15
+      },
+      "position": {
+        "x": 50,
+        "y": 50
+      },
+      "velocity": {
+        "x": 0,
+        "y": 0
+      },
+      "bodyType": "dynamic",
+      "friction": 0.1,
+      "restitution": 0,
+      "color": "#4f9dde",
+      "sensor": false
+    },
+    {
+      "id": "hedge-1",
+      "tags": [
+        "hedge"
+      ],
+      "shape": {
+        "kind": "box",
+        "width": 20,
+        "height": 400
+      },
+      "position": {
+        "x": 120,
+        "y": 400
+      },
+      "velocity": {
+        "x": 0,
+        "y": 0
+      },
+      "bodyType": "static",
+      "friction": 0.1,
+      "restitution": 0,
+      "color": "#228B22",
+      "sensor": false
+    },
+    {
+      "id": "hedge-2",
+      "tags": [
+        "hedge"
+      ],
+      "shape": {
+        "kind": "box",
+        "width": 400,
+        "height": 20
+      },
+      "position": {
+        "x": 300,
+        "y": 500
+      },
+      "velocity": {
+        "x": 0,
+        "y": 0
+      },
+      "bodyType": "static",
+      "friction": 0.1,
+      "restitution": 0,
+      "color": "#228B22",
+      "sensor": false
+    },
+    {
+      "id": "hedge-3",
+      "tags": [
+        "hedge"
+      ],
+      "shape": {
+        "kind": "box",
+        "width": 20,
+        "height": 300
+      },
+      "position": {
+        "x": 500,
+        "y": 250
+      },
+      "velocity": {
+        "x": 0,
+        "y": 0
+      },
+      "bodyType": "static",
+      "friction": 0.1,
+      "restitution": 0,
+      "color": "#228B22",
+      "sensor": false
+    },
+    {
+      "id": "hedge-4",
+      "tags": [
+        "hedge"
+      ],
+      "shape": {
+        "kind": "box",
+        "width": 300,
+        "height": 20
+      },
+      "position": {
+        "x": 350,
+        "y": 100
+      },
+      "velocity": {
+        "x": 0,
+        "y": 0
+      },
+      "bodyType": "static",
+      "friction": 0.1,
+      "restitution": 0,
+      "color": "#228B22",
+      "sensor": false
+    },
+    {
+      "id": "hedge-5",
+      "tags": [
+        "hedge"
+      ],
+      "shape": {
+        "kind": "box",
+        "width": 20,
+        "height": 300
+      },
+      "position": {
+        "x": 250,
+        "y": 350
+      },
+      "velocity": {
+        "x": 0,
+        "y": 0
+      },
+      "bodyType": "static",
+      "friction": 0.1,
+      "restitution": 0,
+      "color": "#228B22",
+      "sensor": false
+    },
+    {
+      "id": "hedge-6",
+      "tags": [
+        "hedge"
+      ],
+      "shape": {
+        "kind": "box",
+        "width": 300,
+        "height": 20
+      },
+      "position": {
+        "x": 150,
+        "y": 200
+      },
+      "velocity": {
+        "x": 0,
+        "y": 0
+      },
+      "bodyType": "static",
+      "friction": 0.1,
+      "restitution": 0,
+      "color": "#228B22",
+      "sensor": false
+    },
+    {
+      "id": "fountain",
+      "tags": [
+        "goal",
+        "fountain"
+      ],
+      "shape": {
+        "kind": "circle",
+        "radius": 25
+      },
+      "position": {
+        "x": 350,
+        "y": 350
+      },
+      "velocity": {
+        "x": 0,
+        "y": 0
+      },
+      "bodyType": "static",
+      "friction": 0.1,
+      "restitution": 0,
+      "color": "#3498db",
+      "sensor": true
+    },
+    {
+      "id": "wall-top",
+      "tags": [
+        "wall"
+      ],
+      "shape": {
+        "kind": "box",
+        "width": 700,
+        "height": 20
+      },
+      "position": {
+        "x": 350,
+        "y": 690
+      },
+      "velocity": {
+        "x": 0,
+        "y": 0
+      },
+      "bodyType": "static",
+      "friction": 0.1,
+      "restitution": 0,
+      "color": "#5a5a5a",
+      "sensor": false
+    },
+    {
+      "id": "wall-bottom",
+      "tags": [
+        "wall"
+      ],
+      "shape": {
+        "kind": "box",
+        "width": 700,
+        "height": 20
+      },
+      "position": {
+        "x": 350,
+        "y": 10
+      },
+      "velocity": {
+        "x": 0,
+        "y": 0
+      },
+      "bodyType": "static",
+      "friction": 0.1,
+      "restitution": 0,
+      "color": "#5a5a5a",
+      "sensor": false
+    },
+    {
+      "id": "wall-left",
+      "tags": [
+        "wall"
+      ],
+      "shape": {
+        "kind": "box",
+        "width": 20,
+        "height": 700
+      },
+      "position": {
+        "x": 10,
+        "y": 350
+      },
+      "velocity": {
+        "x": 0,
+        "y": 0
+      },
+      "bodyType": "static",
+      "friction": 0.1,
+      "restitution": 0,
+      "color": "#5a5a5a",
+      "sensor": false
+    },
+    {
+      "id": "wall-right",
+      "tags": [
+        "wall"
+      ],
+      "shape": {
+        "kind": "box",
+        "width": 20,
+        "height": 700
+      },
+      "position": {
+        "x": 690,
+        "y": 350
+      },
+      "velocity": {
+        "x": 0,
+        "y": 0
+      },
+      "bodyType": "static",
+      "friction": 0.1,
+      "restitution": 0,
+      "color": "#5a5a5a",
+      "sensor": false
+    }
+  ],
+  "objective": {
+    "type": "reach",
+    "target": "fountain",
+    "radius": 30
+  },
+  "hazards": [],
+  "maxSteps": 2500,
+  "id": "a-maze-of-hedges-in-a-garden-with-a-foun",
+  "prompt": "A maze of hedges in a garden, with a fountain goal at the center.",
+  "metadata": {
+    "generatedAt": "2026-07-13T07:42:51.411Z",
+    "model": "gpt-4o"
+  }
+}

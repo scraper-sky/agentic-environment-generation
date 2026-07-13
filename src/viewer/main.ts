@@ -2,8 +2,10 @@ import * as THREE from "three";
 import katex from "katex";
 import "katex/dist/katex.min.css";
 import { SceneSchema, type Scene, type SceneObject } from "../schema/scene.js";
-import type { TraceFile } from "../harness/traverse.js";
+import type { TraceFile, DecisionLog } from "../harness/traverse.js";
 import { getPixelTexture } from "./pixelSprites.js";
+import { applyAction, createWorld, getSnapshot, step, type SimSnapshot, type SimWorld } from "../engine/simulation.js";
+import { checkObjective, type ObjectiveResult } from "../engine/objectives.js";
 
 /** Renders LaTeX into `el`, falling back to the raw source as plain text if KaTeX can't parse it — never a blank panel. */
 function renderMath(el: Element, tex: string, displayMode: boolean): void {
@@ -40,6 +42,8 @@ const select = document.querySelector<HTMLSelectElement>("#scene-select")!;
 const status = document.querySelector<HTMLSpanElement>("#status")!;
 const container = document.querySelector<HTMLDivElement>("#canvas-frame")!;
 const traverseBtn = document.querySelector<HTMLButtonElement>("#traverse-btn")!;
+const playBtn = document.querySelector<HTMLButtonElement>("#play-btn")!;
+const stopPlayBtn = document.querySelector<HTMLButtonElement>("#stop-play-btn")!;
 const replayBtn = document.querySelector<HTMLButtonElement>("#replay-btn")!;
 const verdictEl = document.querySelector<HTMLSpanElement>("#verdict")!;
 const promptInput = document.querySelector<HTMLTextAreaElement>("#prompt-input")!;
@@ -98,6 +102,14 @@ let currentMeshesById = new Map<string, THREE.Mesh>();
 let currentTrace: TraceFile | null = null;
 let currentScene: Scene | null = null;
 let currentScenePath = "";
+
+let playHandle = 0;
+let playSim: SimWorld | null = null;
+let playSnapshots: Array<{ tick: number; objects: SimSnapshot }> = [];
+let playDecisions: DecisionLog[] = [];
+let playLastAction = "";
+let playStartedAt = "";
+const pressedKeys = new Set<string>();
 
 interface ChatTurn {
   role: "user" | "assistant";
@@ -193,7 +205,7 @@ function showVerdict(trace: TraceFile | null): void {
   }
   replayBtn.style.display = "";
   const ok = trace.verdict.status === "success";
-  verdictEl.textContent = ok ? "✓ SUCCESS" : `✗ FAIL (${trace.verdict.status === "fail" ? trace.verdict.reason : trace.verdict.status})`;
+  verdictEl.textContent = ok ? "✓ SUCCESS" : "✗ FAILED";
   verdictEl.style.color = ok ? "#2ecc71" : "#e74c3c";
 }
 
@@ -309,6 +321,12 @@ function renderExemplars(exemplars: Exemplar[]): void {
 function render(path: string, options: { resetChatLog?: boolean } = {}): void {
   cancelAnimationFrame(animationHandle);
   cancelAnimationFrame(replayHandle);
+  cancelAnimationFrame(playHandle);
+  window.removeEventListener("keydown", onPlayKeyDown);
+  window.removeEventListener("keyup", onPlayKeyUp);
+  pressedKeys.clear();
+  playBtn.style.display = "";
+  stopPlayBtn.style.display = "none";
   container.innerHTML = "";
   const scene = loadScene(path);
   currentScene = scene;
@@ -333,8 +351,16 @@ function render(path: string, options: { resetChatLog?: boolean } = {}): void {
 
   renderer?.dispose();
   renderer = new THREE.WebGLRenderer({ antialias: true });
-  const maxDim = 900;
-  const scale = Math.min(1, maxDim / Math.max(frustumWidth, frustumHeight));
+  // Fit to whatever space #app actually has (not a flat guess) — with the
+  // chat sidebar + log sidebar + toolbar accounted for, a fixed cap like the
+  // old 900px could exceed real available width, silently pushing the far
+  // edge of the scene (and anything sitting there, like a goal flag) out of
+  // view behind #app's overflow:auto instead of ever being visibly wrong.
+  const appEl = container.parentElement as HTMLElement;
+  const availableWidth = Math.max(200, appEl.clientWidth - 56);
+  const availableHeight = Math.max(200, appEl.clientHeight - 56);
+  const maxDim = 620;
+  const scale = Math.min(1, maxDim / Math.max(frustumWidth, frustumHeight), availableWidth / frustumWidth, availableHeight / frustumHeight);
   renderer.setSize(frustumWidth * scale, frustumHeight * scale);
   renderer.setPixelRatio(window.devicePixelRatio);
   container.appendChild(renderer.domElement);
@@ -402,7 +428,7 @@ traverseBtn.addEventListener("click", async () => {
   traverseBtn.disabled = true;
   const originalLabel = traverseBtn.textContent;
   traverseBtn.textContent = "Traversing…";
-  status.textContent = "Agent is attempting the scene — one live API call per decision, capped at 60 for this button.";
+  status.textContent = "Agent is playing — see log below.";
 
   terminal.innerHTML = "";
   terminalPlain(`$ traverse ${currentScenePath}`, "t-cmd");
@@ -463,6 +489,171 @@ traverseBtn.addEventListener("click", async () => {
   }
 });
 
+const PLAY_KEYS = new Set(["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "KeyA", "KeyD", "KeyW", "KeyS", "Space"]);
+
+function isTypingTarget(target: EventTarget | null): boolean {
+  return target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement;
+}
+
+function onPlayKeyDown(e: KeyboardEvent): void {
+  if (isTypingTarget(e.target)) return;
+  if (!PLAY_KEYS.has(e.code)) return;
+  e.preventDefault();
+  pressedKeys.add(e.code);
+}
+
+function onPlayKeyUp(e: KeyboardEvent): void {
+  if (!PLAY_KEYS.has(e.code)) return;
+  pressedKeys.delete(e.code);
+}
+
+function actionFromKeys(controls: Scene["player"]["controls"]): string {
+  if (controls === "platformer") {
+    if (pressedKeys.has("ArrowLeft") || pressedKeys.has("KeyA")) return "left";
+    if (pressedKeys.has("ArrowRight") || pressedKeys.has("KeyD")) return "right";
+    return "noop";
+  }
+  if (pressedKeys.has("ArrowUp") || pressedKeys.has("KeyW")) return "up";
+  if (pressedKeys.has("ArrowDown") || pressedKeys.has("KeyS")) return "down";
+  if (pressedKeys.has("ArrowLeft") || pressedKeys.has("KeyA")) return "left";
+  if (pressedKeys.has("ArrowRight") || pressedKeys.has("KeyD")) return "right";
+  return "noop";
+}
+
+/** One physics tick of manual play: reads currently-held keys, steps the sim, mirrors the resulting positions onto the live meshes (the render() animate loop is already running and just needs fresh mesh transforms to draw), and records the tick the same way a trace does so the session can be saved and replayed like any agent run. Returns true once the run has ended. */
+function stepPlayTick(): boolean {
+  if (!playSim || !currentScene) return true;
+  const controls = currentScene.player.controls;
+  const action = actionFromKeys(controls);
+  applyAction(playSim, controls, action);
+  if (controls === "platformer" && (pressedKeys.has("Space") || pressedKeys.has("ArrowUp") || pressedKeys.has("KeyW"))) {
+    applyAction(playSim, controls, "jump");
+  }
+  if (action !== playLastAction) {
+    playDecisions.push({ decisionIndex: playDecisions.length, tick: playSim.tick, action, reasoning: null });
+    playLastAction = action;
+  }
+  step(playSim);
+  const snapshot = getSnapshot(playSim);
+  playSnapshots.push({ tick: playSim.tick, objects: snapshot });
+  for (const [id, mesh] of currentMeshesById) {
+    const obj = snapshot[id];
+    if (!obj) continue;
+    mesh.position.set(obj.position.x, obj.position.y, mesh.position.z);
+    mesh.rotation.z = obj.angle;
+  }
+  const verdict = checkObjective(playSim, currentScene);
+  if (verdict.status !== "running") {
+    finishPlay(verdict);
+    return true;
+  }
+  if (playSim.tick >= currentScene.maxSteps) {
+    finishPlay({ status: "fail", reason: "timeout" });
+    return true;
+  }
+  return false;
+}
+
+function startPlay(): void {
+  if (!currentScene) return;
+  cancelAnimationFrame(replayHandle);
+  cancelAnimationFrame(playHandle);
+
+  playSim = createWorld(currentScene);
+  playSnapshots = [{ tick: 0, objects: getSnapshot(playSim) }];
+  playDecisions = [];
+  playLastAction = "";
+  playStartedAt = new Date().toISOString();
+  pressedKeys.clear();
+
+  playBtn.style.display = "none";
+  stopPlayBtn.style.display = "";
+  traverseBtn.disabled = true;
+  replayBtn.disabled = true;
+  select.disabled = true;
+  generateBtn.disabled = true;
+  chatSendBtn.disabled = true;
+  verdictEl.textContent = "";
+  status.textContent =
+    currentScene.player.controls === "platformer"
+      ? "Play mode: ←/→ or A/D to move, Space/↑ to jump."
+      : "Play mode: arrow keys or WASD to move.";
+
+  window.addEventListener("keydown", onPlayKeyDown);
+  window.addEventListener("keyup", onPlayKeyUp);
+
+  const msPerTick = 1000 / 60;
+  let lastTime: number | null = null;
+  let accumulator = 0;
+  const loop = (now: number) => {
+    if (lastTime === null) lastTime = now;
+    accumulator += now - lastTime;
+    lastTime = now;
+    while (accumulator >= msPerTick) {
+      accumulator -= msPerTick;
+      if (stepPlayTick()) return;
+    }
+    playHandle = requestAnimationFrame(loop);
+  };
+  playHandle = requestAnimationFrame(loop);
+}
+
+async function savePlayTrace(verdict: ObjectiveResult): Promise<void> {
+  if (!currentScene) return;
+  const trace: TraceFile = {
+    sceneId: currentScene.id,
+    scenePath: currentScenePath,
+    prompt: currentScene.prompt,
+    model: "human",
+    startedAt: playStartedAt,
+    finishedAt: new Date().toISOString(),
+    verdict,
+    decisions: playDecisions,
+    snapshots: playSnapshots,
+  };
+  traces.push(trace);
+  currentTrace = trace;
+  showVerdict(trace);
+  status.textContent = verdict.status === "success" ? "You reached the goal." : "Run ended — replay it or try again.";
+  try {
+    const res = await fetch("/api/save-trace", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ trace }),
+    });
+    if (!res.ok) throw new Error(`save failed (${res.status})`);
+  } catch (err) {
+    status.textContent = `Recording not saved to disk: ${err instanceof Error ? err.message : String(err)}`;
+  }
+}
+
+function finishPlay(verdict: ObjectiveResult): void {
+  cancelAnimationFrame(playHandle);
+  window.removeEventListener("keydown", onPlayKeyDown);
+  window.removeEventListener("keyup", onPlayKeyUp);
+  pressedKeys.clear();
+
+  playBtn.style.display = "";
+  stopPlayBtn.style.display = "none";
+  traverseBtn.disabled = false;
+  replayBtn.disabled = false;
+  select.disabled = false;
+  generateBtn.disabled = false;
+  chatSendBtn.disabled = false;
+
+  void savePlayTrace(verdict);
+}
+
+playBtn.addEventListener("click", startPlay);
+
+stopPlayBtn.addEventListener("click", () => {
+  if (!playSim || !currentScene) return;
+  const verdict = checkObjective(playSim, currentScene);
+  finishPlay(verdict.status === "running" ? { status: "fail", reason: "stopped-early" } : verdict);
+});
+
+window.addEventListener("blur", () => pressedKeys.clear());
+
 select.addEventListener("change", () => render(select.value));
 
 generateBtn.addEventListener("click", async () => {
@@ -493,7 +684,8 @@ generateBtn.addEventListener("click", async () => {
     render(virtualPath);
 
     const attempts = data.attempts as number;
-    generateStatus.textContent = `Done — ${attempts} attempt${attempts > 1 ? "s" : ""}.`;
+    const motif = data.motif as string | undefined;
+    generateStatus.textContent = `Done — ${attempts} attempt${attempts > 1 ? "s" : ""}${motif ? ` · layout: ${motif}` : ""}.`;
     renderExemplars(data.retrievedExemplars as Exemplar[]);
   } catch (err) {
     generateStatus.textContent = `Error: ${err instanceof Error ? err.message : String(err)}`;
@@ -510,3 +702,11 @@ if (sceneFiles.length > 0) {
 } else {
   status.textContent = "No scenes found in scenes/. Run `npm run generate` first.";
 }
+
+let resizeHandle = 0;
+window.addEventListener("resize", () => {
+  window.clearTimeout(resizeHandle);
+  resizeHandle = window.setTimeout(() => {
+    if (select.value) render(select.value, { resetChatLog: false });
+  }, 150);
+});

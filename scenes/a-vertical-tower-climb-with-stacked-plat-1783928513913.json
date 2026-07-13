@@ -1,0 +1,220 @@
+{
+  "bounds": {
+    "width": 600,
+    "height": 600
+  },
+  "gravity": {
+    "x": 0,
+    "y": -1
+  },
+  "player": {
+    "objectId": "player",
+    "controls": "platformer"
+  },
+  "objects": [
+    {
+      "id": "player",
+      "tags": [
+        "player"
+      ],
+      "shape": {
+        "kind": "circle",
+        "radius": 15
+      },
+      "position": {
+        "x": 100,
+        "y": 75
+      },
+      "velocity": {
+        "x": 0,
+        "y": 0
+      },
+      "bodyType": "dynamic",
+      "friction": 0.1,
+      "restitution": 0,
+      "color": "#4f9dde",
+      "sensor": false
+    },
+    {
+      "id": "platform-1",
+      "tags": [
+        "platform"
+      ],
+      "shape": {
+        "kind": "box",
+        "width": 200,
+        "height": 20
+      },
+      "position": {
+        "x": 100,
+        "y": 50
+      },
+      "velocity": {
+        "x": 0,
+        "y": 0
+      },
+      "bodyType": "static",
+      "friction": 0.1,
+      "restitution": 0,
+      "color": "#8b4513",
+      "sensor": false
+    },
+    {
+      "id": "bridge-1",
+      "tags": [
+        "platform"
+      ],
+      "shape": {
+        "kind": "box",
+        "width": 100,
+        "height": 20
+      },
+      "position": {
+        "x": 107,
+        "y": 113
+      },
+      "velocity": {
+        "x": 0,
+        "y": 0
+      },
+      "bodyType": "static",
+      "friction": 0.1,
+      "restitution": 0,
+      "color": "#8b4513",
+      "sensor": false
+    },
+    {
+      "id": "bridge-2",
+      "tags": [
+        "platform"
+      ],
+      "shape": {
+        "kind": "box",
+        "width": 100,
+        "height": 20
+      },
+      "position": {
+        "x": 115,
+        "y": 175
+      },
+      "velocity": {
+        "x": 0,
+        "y": 0
+      },
+      "bodyType": "static",
+      "friction": 0.1,
+      "restitution": 0,
+      "color": "#8b4513",
+      "sensor": false
+    },
+    {
+      "id": "bridge-3",
+      "tags": [
+        "platform"
+      ],
+      "shape": {
+        "kind": "box",
+        "width": 100,
+        "height": 20
+      },
+      "position": {
+        "x": 122,
+        "y": 238
+      },
+      "velocity": {
+        "x": 0,
+        "y": 0
+      },
+      "bodyType": "static",
+      "friction": 0.1,
+      "restitution": 0,
+      "color": "#8b4513",
+      "sensor": false
+    },
+    {
+      "id": "bridge-4",
+      "tags": [
+        "platform"
+      ],
+      "shape": {
+        "kind": "box",
+        "width": 100,
+        "height": 20
+      },
+      "position": {
+        "x": 129,
+        "y": 301
+      },
+      "velocity": {
+        "x": 0,
+        "y": 0
+      },
+      "bodyType": "static",
+      "friction": 0.1,
+      "restitution": 0,
+      "color": "#8b4513",
+      "sensor": false
+    },
+    {
+      "id": "platform-2",
+      "tags": [
+        "platform"
+      ],
+      "shape": {
+        "kind": "box",
+        "width": 200,
+        "height": 20
+      },
+      "position": {
+        "x": 180,
+        "y": 364
+      },
+      "velocity": {
+        "x": 0,
+        "y": 0
+      },
+      "bodyType": "static",
+      "friction": 0.1,
+      "restitution": 0,
+      "color": "#8b4513",
+      "sensor": false
+    },
+    {
+      "id": "goal-flag",
+      "tags": [
+        "goal",
+        "flag"
+      ],
+      "shape": {
+        "kind": "circle",
+        "radius": 15
+      },
+      "position": {
+        "x": 180,
+        "y": 415
+      },
+      "velocity": {
+        "x": 0,
+        "y": 0
+      },
+      "bodyType": "static",
+      "friction": 0.1,
+      "restitution": 0,
+      "color": "#32cd32",
+      "sensor": true
+    }
+  ],
+  "objective": {
+    "type": "reach",
+    "target": "goal-flag",
+    "radius": 20
+  },
+  "hazards": [],
+  "maxSteps": 2000,
+  "id": "a-vertical-tower-climb-with-stacked-plat",
+  "prompt": "A vertical tower climb with stacked platforms rising toward a flag at the top.",
+  "metadata": {
+    "generatedAt": "2026-07-13T07:41:53.912Z",
+    "model": "gpt-4o"
+  }
+}

@@ -4,11 +4,13 @@ An agent harness that turns a text command into a playable 2D physics scene, and
 
 Built for the General Intuition "Infinite Environment Generation via an Agent Harness" tech challenge (see `CLAUDE.md`).
 
+**[→ GALLERY.md](GALLERY.md)** — 10 varied prompts run end to end (generate → agent traversal), with real numbers and previews: 10/10 generated a valid, winnable scene; 4/10 completed inside a deliberately tight decision cap. Includes the two real bugs this stress-testing found and fixed, and one known limitation left honestly disclosed rather than hidden.
+
 ## Start here if you're short on time
 
 The core deliverable is the two-CLI loop: **`generate`** (text → scene) and **`traverse`** (scene → autonomous agent → pass/fail, verified in code, never pixels). That's the direct answer to the brief. Everything from "Editing a scene through chat" onward in this README — chat-based scene editing, retrieval-policy tuning, the live terminal, the reward-signal demo — was built on top of that core loop during follow-up iteration; it's real and working, but it's exploratory, not required to evaluate the harness itself.
 
-Fastest path to see it work: `npm install && npm run dev`, open the printed URL, pick `example-platformer.json` from the dropdown, click **Replay trace**.
+Fastest path to see it work: `npm install && npm run dev`, open the printed URL, pick `example-platformer.json` from the dropdown, click **Replay**. Or see [GALLERY.md](GALLERY.md) for ten more, already run, with results.
 
 ## What this is
 
@@ -42,8 +44,9 @@ cp .env.example .env
 # View the two committed example scenes (no API key required)
 npm run dev
 # -> open the printed local URL, pick a scene from the dropdown,
-#    click "Replay trace" to watch the recorded agent run, or "Traverse" to
-#    run the agent live and get a fresh trace (requires OPENAI_API_KEY).
+#    click "Replay" to watch a recorded run, "Agent" to have the LLM attempt
+#    the scene live (requires OPENAI_API_KEY), or "Play" to drive the player
+#    yourself with the keyboard — both produce a trace you can replay after.
 #    Type a prompt in the sidebar and click "Generate" to create a new scene
 #    right from the page (requires OPENAI_API_KEY) — no CLI needed.
 
@@ -95,11 +98,20 @@ Each decision, the agent receives a compact JSON state (not pixels): its positio
 - **Platformer**: `groundAheadRight`/`groundAheadLeft` (is the floor about to disappear — a gap?) and, separately, `wallAheadRight`/`wallAheadLeft` (is something solid — a tree, a pillar — standing directly in the path on otherwise-continuous ground?). The first covers falling, the second covers walking into an obstacle; conflating them was a real bug (an agent could see continuous ground and never realize a tree was blocking it).
 - **Topdown**: `blockedUp`/`blockedDown`/`blockedLeft`/`blockedRight` — is a wall immediately in that direction? Without this the agent has no way to detect it needs to detour around an obstacle.
 
-The in-page **Traverse** button streams every decision live to a terminal-style panel as it happens (each decision is a real network round-trip, so this is actual progress, not a fake progress bar) — see `vite.config.ts`'s `/api/traverse` (newline-delimited JSON stream) and `traverse()`'s `onDecision` callback in `src/harness/traverse.ts`. That button caps at 60 decisions (~1–3 min worst case) so it doesn't leave you waiting indefinitely on a hard scene; `npm run traverse` via the CLI uses the scene's full `maxSteps` budget for a thorough, uncapped run.
+The in-page **Agent** button streams every decision live to a terminal-style panel as it happens (each decision is a real network round-trip, so this is actual progress, not a fake progress bar) — see `vite.config.ts`'s `/api/traverse` (newline-delimited JSON stream) and `traverse()`'s `onDecision` callback in `src/harness/traverse.ts`. That button caps at 60 decisions (~1–3 min worst case) so it doesn't leave you waiting indefinitely on a hard scene; `npm run traverse` via the CLI uses the scene's full `maxSteps` budget for a thorough, uncapped run.
 
 The agent replies with exactly one action from a closed enum (`left`/`right`/`jump`/`noop` or `up`/`down`/`left`/`right`/`noop`), enforced the same way the scene schema is — via `zodResponseFormat` — so it can never emit anything outside the declared action space. See `src/harness/traverse.ts` and `src/harness/prompts/traverse.system.md`.
 
 **Decision cadence isn't fixed-rate** — a `"noop"` chosen while airborne has nothing new to decide (the jump arc is already committed by momentum), so re-querying the LLM every 8 ticks just to hear "still coasting" was burning most of the decision budget on ticks where no different action was ever possible; watching a real trace get stuck at 60/60 decisions and barely past the first obstacle is what surfaced this. A held airborne `"noop"` now rides out the whole arc (up to a safety cap) and only asks again once landed, which is the tick a real decision becomes possible again — collapsed a jump arc that used to cost ~8 decisions down to 1 in testing, and turned a scene that couldn't finish in 60 decisions into one that finished in 22.
+
+## Agent mode vs. Play mode
+
+There are two ways to move through a generated scene, both driving the exact same physics/objective code (`src/engine/simulation.ts`, `src/engine/objectives.ts`) and both producing an ordinary trace file you can replay afterward — the only difference is who's picking the actions:
+
+- **Agent** — the LLM decides, over the network, one structured-output action at a time (described above). This is the part that answers the brief's "verifiable objectives" ask: success/fail is a code-level check, not a human or a VLM eyeballing pixels.
+- **Play** — you decide, with the keyboard (arrow keys or WASD, Space/↑ to jump), at a live 60Hz in the browser. `startPlay()` in `src/viewer/main.ts` runs `matter-js` client-side — the same render-agnostic simulation module the CLI and the agent use, just stepped locally instead of headlessly in Node — reads whichever movement keys are currently held each tick, and records every tick the same way `traverse()` does. Clicking "Stop & save" (or reaching success/a hazard) posts the recording to `/api/save-trace`, so a human playthrough shows up in the trace list identically to an agent run and can be replayed with the same **Replay** button.
+
+Play mode exists for two reasons: it's a faster way to sanity-check whether a scene is actually fun/fair before spending an API call on the agent, and it's a second, human-generated source of the exact same trace format the reward-shaping code (`src/engine/reward.ts`) already consumes — useful if you wanted human demonstrations alongside agent rollouts later.
 
 ## Editing a scene through chat
 
@@ -128,6 +140,8 @@ The top-scored exemplars (their actual past prompt + the scene JSON that was gen
 
 This is intentionally *not* fine-tuning: no training job, no GPU, improves as soon as one rating exists, degrades gracefully to zero-shot generation when the library is empty. `feedback.json` (gitignored — it's local usage state, not project content) is the whole store; delete it to reset the policy to a blank slate.
 
+**Structural diversity, on top of the retrieval above.** Retrieval and few-shot examples both condition on the *topic* of the prompt, which alone tends to collapse: ask for "a forest platformer" five times and an LLM will default to roughly the same two gaps and a tree each time, because nothing is pushing it toward a different *shape*. `src/harness/motifs.ts` adds a second, orthogonal axis borrowed from classic procedural-content-generation practice rather than from Rosebud or any other LLM-scene-generation tool specifically — Wave Function Collapse composes levels from small local rules instead of one global description, and roguelike generators (Spelunky's level generator is the canonical example) pick a level's shape from a library of room templates rather than free-forming it. Each generation call picks one of seven short spatial patterns at random (`staircase-ascent`, `gauntlet`, `branching-paths`, `open-expanse`, `enclosed-maze`, `orbit-a-hazard`, `collect-and-return`) and injects it as a scaffold the model is told to adapt to the actual prompt or drop entirely if it doesn't fit — the prompt still wins, this only breaks the tie when the prompt itself is agnostic about layout. The picked motif is shown next to the generate button (`layout: gauntlet`, etc.) so it's not a hidden mechanism.
+
 ## Reward signal from trace data
 
 `checkObjective()` is binary — running/success/fail — which is the right shape for a hard verdict but not for training anything. `src/engine/reward.ts` turns a recorded trace into a continuous, per-tick reward signal, entirely from code-level ground truth (object positions each tick — no pixels):
@@ -153,10 +167,10 @@ prints a sparkline of distance-to-goal and shaped reward per trace, plus total/d
 src/
   schema/            Zod scene + action schemas (shared contract: types, validation, LLM output format)
   engine/            matter-js wrapper, objective checking, semantic scene validation, reward shaping — no rendering, no OpenAI
-  harness/           generate.ts / traverse.ts / edit.ts CLIs+modules + their system prompts + the OpenAI client
+  harness/           generate.ts / traverse.ts / edit.ts CLIs+modules + motifs.ts (structural scaffolds) + system prompts + the OpenAI client
   policy/            feedback.ts — the reward-weighted retrieval library + scoring equation
-  viewer/            Vite + Three.js browser app: renders a scene, replays a trace, in-page generate + edit + rate UI
-vite.config.ts       Dev-only API (/api/generate, /api/edit, /api/rate, /api/traverse, /api/policy-state) backing the in-page UI
+  viewer/            Vite + Three.js browser app: renders a scene, replays a trace, in-page generate + edit + rate + Agent/Play UI
+vite.config.ts       Dev-only API (/api/generate, /api/edit, /api/rate, /api/traverse, /api/save-trace, /api/policy-state) backing the in-page UI
 scenes/              Scene JSON files (two curated examples, plus real scenes generated along the way)
 traces/              Recorded traversal runs matching whatever's in scenes/
 feedback.json        Local ratings library (gitignored, created on first rating)
