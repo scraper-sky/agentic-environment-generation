@@ -2,7 +2,6 @@
 
 An agent harness that turns a text command into a playable 2D physics scene, and a second agent that autonomously plays it — with success/failure decided by code, not by a human or a vision model looking at pixels.
 
-Built for the General Intuition "Infinite Environment Generation via an Agent Harness" tech challenge (see `CLAUDE.md`).
 
 **[→ GALLERY.md](GALLERY.md)** — 10 varied prompts run end to end (generate → agent traversal), with real numbers and previews: 10/10 generated a valid, winnable scene; 4/10 completed inside a deliberately tight decision cap. Includes the two real bugs this stress-testing found and fixed, and one known limitation left honestly disclosed rather than hidden.
 
