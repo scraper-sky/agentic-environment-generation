@@ -187,7 +187,17 @@ function harnessApiPlugin(): Plugin {
   };
 }
 
-export default defineConfig({
+export default defineConfig(({ command }) => ({
   root: "src/viewer",
+  // GitHub Pages serves a project repo at /<repo-name>/, not /, so asset URLs
+  // in the production build need that prefix — but `vite dev` does honor
+  // `base` too (it redirects `/` to it), so applying this unconditionally
+  // would move local dev off http://localhost:5173/ for no reason. Only the
+  // production build needs it.
+  base: command === "build" ? "/agentic-environment-generation/" : "/",
+  build: {
+    outDir: "../../dist",
+    emptyOutDir: true,
+  },
   plugins: [harnessApiPlugin()],
-});
+}));

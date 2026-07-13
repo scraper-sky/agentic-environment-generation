@@ -8,6 +8,8 @@
     "generate": "tsx src/harness/generate.ts",
     "traverse": "tsx src/harness/traverse.ts",
     "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
     "demo": "tsx scripts/demo.ts",
     "gallery": "tsx scripts/gallery.ts",
     "reward-demo": "tsx scripts/reward-demo.ts",

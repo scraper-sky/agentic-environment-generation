@@ -45,6 +45,8 @@ const traverseBtn = document.querySelector<HTMLButtonElement>("#traverse-btn")!;
 const playBtn = document.querySelector<HTMLButtonElement>("#play-btn")!;
 const stopPlayBtn = document.querySelector<HTMLButtonElement>("#stop-play-btn")!;
 const replayBtn = document.querySelector<HTMLButtonElement>("#replay-btn")!;
+const exportBtn = document.querySelector<HTMLButtonElement>("#export-btn")!;
+const recordsList = document.querySelector<HTMLDivElement>("#records-list")!;
 const verdictEl = document.querySelector<HTMLSpanElement>("#verdict")!;
 const promptInput = document.querySelector<HTMLTextAreaElement>("#prompt-input")!;
 const generateBtn = document.querySelector<HTMLButtonElement>("#generate-btn")!;
@@ -103,6 +105,30 @@ let currentTrace: TraceFile | null = null;
 let currentScene: Scene | null = null;
 let currentScenePath = "";
 
+/**
+ * `/api/*` only exists in `vite dev` (see vite.config.ts's `configureServer`
+ * plugin) — a static build (e.g. GitHub Pages) has no server behind it, so
+ * these routes 404. Detected once at startup so Generate/Agent/Edit/Rate can
+ * be clearly disabled with an explanation instead of silently failing on
+ * click, which would otherwise look like a bug rather than "this needs a
+ * local server". Play mode and Replay need no backend and stay fully live.
+ */
+let apiAvailable = true;
+async function checkApiAvailability(): Promise<boolean> {
+  try {
+    const res = await fetch("/api/policy-state");
+    if (!res.ok) return false;
+    // Some static-file servers (including `vite preview` itself) return 200
+    // with index.html for any unmatched path (SPA fallback) rather than a
+    // real 404 — checking status alone would misread that as "API present".
+    // Parsing as JSON and checking the real shape catches that case too.
+    const data: unknown = await res.json();
+    return typeof data === "object" && data !== null && (data as { ok?: unknown }).ok === true;
+  } catch {
+    return false;
+  }
+}
+
 let playHandle = 0;
 let playSim: SimWorld | null = null;
 let playSnapshots: Array<{ tick: number; objects: SimSnapshot }> = [];
@@ -134,6 +160,10 @@ function resetChat(): void {
 async function sendEdit(): Promise<void> {
   const instruction = chatInput.value.trim();
   if (!instruction || !currentScene) return;
+  if (!apiAvailable) {
+    chatStatus.textContent = "This is a static preview — editing needs a local server. Run `npm run dev` (see README).";
+    return;
+  }
   chatInput.value = "";
   chatSendBtn.disabled = true;
   appendChatLine(instruction, "chat-user");
@@ -209,6 +239,59 @@ function showVerdict(trace: TraceFile | null): void {
   verdictEl.style.color = ok ? "#2ecc71" : "#e74c3c";
 }
 
+/** Client-side download — no backend involved, so this works identically in local dev and on the static (no-API) Pages build, which is the one place a completed recording can't be persisted server-side via /api/save-trace. */
+function downloadJson(filename: string, data: unknown): void {
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+/** Every scene known this session — bundled at build time plus anything generated/edited live — so "past records" always reflects what's actually loadable right now. */
+function allKnownScenePaths(): string[] {
+  return [...sceneFiles, ...dynamicScenes.keys()];
+}
+
+function renderRecordsList(): void {
+  recordsList.innerHTML = "";
+  const paths = allKnownScenePaths();
+  if (paths.length === 0) {
+    recordsList.innerHTML = '<div class="record-empty">No scenes yet.</div>';
+    return;
+  }
+  for (const path of paths) {
+    let scene: Scene;
+    try {
+      scene = loadScene(path);
+    } catch {
+      continue;
+    }
+    const trace = findLatestTrace(scene.id);
+    const row = document.createElement("button");
+    row.type = "button";
+    row.className = "record-row" + (path === select.value ? " active" : "");
+    const promptSpan = document.createElement("span");
+    promptSpan.className = "record-prompt";
+    promptSpan.textContent = scene.prompt || path.split("/").pop()!;
+    row.appendChild(promptSpan);
+    if (trace) {
+      const verdictSpan = document.createElement("span");
+      const ok = trace.verdict.status === "success";
+      verdictSpan.className = `record-verdict ${ok ? "ok" : "fail"}`;
+      verdictSpan.textContent = ok ? "✓" : "✗";
+      row.appendChild(verdictSpan);
+    }
+    row.addEventListener("click", () => {
+      select.value = path;
+      render(path);
+    });
+    recordsList.appendChild(row);
+  }
+}
+
 function buildMesh(obj: SceneObject): THREE.Mesh {
   const width = obj.shape.kind === "box" ? obj.shape.width : obj.shape.radius * 2;
   const height = obj.shape.kind === "box" ? obj.shape.height : obj.shape.radius * 2;
@@ -239,6 +322,10 @@ function renderStars(filled: number): void {
 
 async function submitRating(rating: number): Promise<void> {
   if (!currentScene) return;
+  if (!apiAvailable) {
+    ratingStatus.textContent = "This is a static preview — rating needs a local server. Run `npm run dev` (see README).";
+    return;
+  }
   ratingStatus.textContent = "Saving…";
   try {
     const res = await fetch("/api/rate", {
@@ -370,6 +457,7 @@ function render(path: string, options: { resetChatLog?: boolean } = {}): void {
   currentMeshesById = meshesById;
   currentTrace = findLatestTrace(scene.id);
   showVerdict(currentTrace);
+  renderRecordsList();
 
   renderStars(0);
   ratingStatus.textContent = "How well does it match what you asked for?";
@@ -415,6 +503,14 @@ replayBtn.addEventListener("click", () => {
   if (currentTrace) playTrace(currentTrace);
 });
 
+exportBtn.addEventListener("click", () => {
+  if (!currentScene) return;
+  downloadJson(`${currentScene.id}.json`, currentScene);
+  if (currentTrace) {
+    downloadJson(`${currentScene.id}-trace-${Date.parse(currentTrace.finishedAt) || Date.now()}.json`, currentTrace);
+  }
+});
+
 interface StreamDecisionEvent {
   type: "decision";
   decision: { decisionIndex: number; tick: number; action: string; reasoning: string | null };
@@ -425,10 +521,14 @@ type StreamEvent = StreamDecisionEvent | { type: "done"; trace: TraceFile } | { 
 
 traverseBtn.addEventListener("click", async () => {
   if (!currentScene) return;
+  if (!apiAvailable) {
+    terminalPlain("$ static preview — Agent needs a local server. Run `npm run dev` (see README). Try Play or Replay instead.", "t-placeholder");
+    return;
+  }
   traverseBtn.disabled = true;
   const originalLabel = traverseBtn.textContent;
   traverseBtn.textContent = "Traversing…";
-  status.textContent = "Agent is playing — see log below.";
+  status.textContent = "Agent is playing; check agent traversal log below";
 
   terminal.innerHTML = "";
   terminalPlain(`$ traverse ${currentScenePath}`, "t-cmd");
@@ -475,6 +575,7 @@ traverseBtn.addEventListener("click", async () => {
     traces.push(finalTrace);
     currentTrace = finalTrace;
     showVerdict(finalTrace);
+    renderRecordsList();
     const ok = finalTrace.verdict.status === "success";
     terminalPlain(ok ? "$ SUCCESS" : `$ FAIL (${finalTrace.verdict.status === "fail" ? finalTrace.verdict.reason : finalTrace.verdict.status})`, ok ? "t-success" : "t-fail");
     status.textContent = `"${currentScene.prompt}" — objective: ${currentScene.objective.type} → ${currentScene.objective.target}`;
@@ -614,6 +715,19 @@ async function savePlayTrace(verdict: ObjectiveResult): Promise<void> {
   traces.push(trace);
   currentTrace = trace;
   showVerdict(trace);
+  renderRecordsList();
+
+  if (!apiAvailable) {
+    // No backend to persist to (e.g. the static Pages build) — the recording
+    // is still fully usable this session (shows up in "past records", can be
+    // replayed, can be downloaded via Export), it just isn't written to a
+    // local traces/ folder that doesn't exist here. Say that plainly instead
+    // of attempting the fetch and surfacing a raw "Failed to fetch".
+    status.textContent =
+      (verdict.status === "success" ? "You reached the goal. " : "Run ended. ") + "Static preview — use Export to save this recording as a file.";
+    return;
+  }
+
   status.textContent = verdict.status === "success" ? "You reached the goal." : "Run ended — replay it or try again.";
   try {
     const res = await fetch("/api/save-trace", {
@@ -657,6 +771,10 @@ window.addEventListener("blur", () => pressedKeys.clear());
 select.addEventListener("change", () => render(select.value));
 
 generateBtn.addEventListener("click", async () => {
+  if (!apiAvailable) {
+    generateStatus.textContent = "This is a static preview — Generate needs a local server. Run `npm run dev` (see README).";
+    return;
+  }
   const prompt = promptInput.value.trim();
   if (!prompt) return;
   generateBtn.disabled = true;
@@ -701,6 +819,7 @@ if (sceneFiles.length > 0) {
   render(sceneFiles[0]!);
 } else {
   status.textContent = "No scenes found in scenes/. Run `npm run generate` first.";
+  renderRecordsList();
 }
 
 let resizeHandle = 0;
@@ -710,3 +829,24 @@ window.addEventListener("resize", () => {
     if (select.value) render(select.value, { resetChatLog: false });
   }, 150);
 });
+
+void (async () => {
+  apiAvailable = await checkApiAvailability();
+  if (apiAvailable) return;
+
+  // No backend (e.g. a static GitHub Pages build) — gray out the
+  // API-dependent controls up front and say why, rather than leaving them
+  // clickable and failing confusingly on first use. Play and Replay need no
+  // backend and are left fully working.
+  generateBtn.disabled = true;
+  generateBtn.title = "Static preview — run `npm run dev` locally for live generation.";
+  generateStatus.textContent = "Static preview: Generate needs a local server (`npm run dev`) with an OpenAI key. Try Play or Replay on the scenes above instead.";
+
+  traverseBtn.disabled = true;
+  traverseBtn.title = "Static preview — run `npm run dev` locally for the live agent.";
+
+  chatSendBtn.disabled = true;
+  chatInput.disabled = true;
+  chatInput.placeholder = "Static preview — run npm run dev locally to edit scenes";
+  chatStatus.textContent = "Static preview: editing needs a local server (`npm run dev`) with an OpenAI key.";
+})();

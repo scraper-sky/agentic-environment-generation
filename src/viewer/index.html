@@ -370,6 +370,60 @@
         min-height: 14px;
         line-height: 1.4;
       }
+      #records-list {
+        max-height: 220px;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+      .record-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 8px;
+        border-radius: var(--radius);
+        border: 1px solid transparent;
+        cursor: pointer;
+        font-size: 12.5px;
+        color: var(--text-dim);
+        text-align: left;
+        background: none;
+        width: 100%;
+      }
+      .record-row:hover {
+        background: var(--card-hover);
+        border-color: var(--border-soft);
+      }
+      .record-row.active {
+        border-color: var(--accent);
+        background: var(--accent-soft);
+        color: var(--text);
+      }
+      .record-prompt {
+        flex: 1 1 auto;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .record-verdict {
+        flex-shrink: 0;
+        font-family: var(--mono);
+        font-size: 11px;
+        font-weight: 700;
+      }
+      .record-verdict.ok {
+        color: var(--success);
+      }
+      .record-verdict.fail {
+        color: #e74c3c;
+      }
+      .record-empty {
+        color: var(--text-faint);
+        font-size: 12px;
+        padding: 6px 8px;
+      }
       #rating-stars span {
         cursor: pointer;
         font-size: 21px;
@@ -575,10 +629,11 @@
         <label>scene <select id="scene-select"></select></label>
       </div>
       <div class="toolbar-group">
-        <button id="traverse-btn" title="Let the AI agent attempt this scene">Agent</button>
-        <button id="play-btn" title="Drive the scene yourself with the keyboard">Play</button>
+        <button id="traverse-btn" title="Let the AI agent attempt this scene">Agent Mode</button>
+        <button id="play-btn" title="Drive the scene yourself with the keyboard">User Play Mode</button>
         <button id="stop-play-btn" style="display: none">Stop &amp; save</button>
         <button id="replay-btn" style="display: none">Replay</button>
+        <button id="export-btn" title="Download this scene, and its latest recording if any, as JSON files">Export</button>
       </div>
       <div class="toolbar-divider"></div>
       <span id="verdict"></span>
@@ -603,6 +658,10 @@
           <textarea id="prompt-input" rows="3" placeholder="Describe a scene, e.g. a platformer with two gaps and a spike hazard"></textarea>
           <button id="generate-btn" class="primary">Generate</button>
           <div id="generate-status" class="small-status"></div>
+        </section>
+        <section class="card">
+          <h3>past records</h3>
+          <div id="records-list"></div>
         </section>
         <section class="card">
           <h3>rate this scene</h3>

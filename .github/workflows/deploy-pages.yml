@@ -1,0 +1,46 @@
+name: Deploy static preview to GitHub Pages
+
+# Builds the viewer as a static site and deploys it to GitHub Pages on every
+# push to main. This is a read-only preview only — Generate/Agent/Edit/Rate
+# all need the dev-server's /api/* routes (see vite.config.ts), which don't
+# exist in a static build, so the viewer detects that at runtime and disables
+# those controls with an explanation instead of failing silently. Play mode
+# and Replay need no backend and work fully here.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm ci
+      - run: npm run build
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

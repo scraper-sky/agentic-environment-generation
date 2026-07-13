@@ -5,6 +5,8 @@ An agent harness that turns a text command into a playable 2D physics scene, and
 
 **[→ GALLERY.md](GALLERY.md)** — 10 varied prompts run end to end (generate → agent traversal), with real numbers and previews: 10/10 generated a valid, winnable scene; 4/10 completed inside a deliberately tight decision cap. Includes the two real bugs this stress-testing found and fixed, and one known limitation left honestly disclosed rather than hidden.
 
+**Live static preview**: https://scraper-sky.github.io/agentic-environment-generation/ (deploys automatically on push via `.github/workflows/deploy-pages.yml`). This is a click-around preview only — it has no backend, so **Generate / Agent / Edit / Rate are disabled there** with an on-screen explanation (they need `OPENAI_API_KEY`, which can't safely live in a static site). **Replay** and **Play** (drive the player yourself with the keyboard) both run entirely client-side and work fully on the hosted preview. For the live-generation/agent features, run it locally — see Setup below.
+
 ## Start here if you're short on time
 
 The core deliverable is the two-CLI loop: **`generate`** (text → scene) and **`traverse`** (scene → autonomous agent → pass/fail, verified in code, never pixels). That's the direct answer to the brief. Everything from "Editing a scene through chat" onward in this README — chat-based scene editing, retrieval-policy tuning, the live terminal, the reward-signal demo — was built on top of that core loop during follow-up iteration; it's real and working, but it's exploratory, not required to evaluate the harness itself.
