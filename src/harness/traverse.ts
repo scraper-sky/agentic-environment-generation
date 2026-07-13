@@ -127,8 +127,15 @@ export interface TraverseOptions {
   onDecision?: (decision: DecisionLog, context: { stepsRemaining: number; decisionBudget: number }) => void;
 }
 
-export async function traverse(scenePath: string, options: TraverseOptions = {}): Promise<TraceFile> {
-  const scene = SceneSchema.parse(JSON.parse(readFileSync(scenePath, "utf-8")));
+/**
+ * Core decision loop, taking an already-parsed `Scene` directly rather than a
+ * file path — the CLI and the local dev API both have a real scenes/ folder
+ * to read from, but a stateless deploy (e.g. a Vercel function, where a
+ * scene "written" by one request isn't guaranteed to exist on disk for a
+ * later request handled by a different container) does not. Callers with a
+ * path on disk should use `traverse()` below instead.
+ */
+export async function traverseScene(scene: Scene, scenePath: string, options: TraverseOptions = {}): Promise<TraceFile> {
   const sim = createWorld(scene);
   const client = getOpenAIClient();
 
@@ -211,6 +218,12 @@ export async function traverse(scenePath: string, options: TraverseOptions = {})
     decisions,
     snapshots,
   };
+}
+
+/** Path-based entry point — CLI and local-dev API usage, where scenePath is a real file on disk. */
+export async function traverse(scenePath: string, options: TraverseOptions = {}): Promise<TraceFile> {
+  const scene = SceneSchema.parse(JSON.parse(readFileSync(scenePath, "utf-8")));
+  return traverseScene(scene, scenePath, options);
 }
 
 async function main() {

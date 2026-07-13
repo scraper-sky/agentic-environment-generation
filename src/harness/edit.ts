@@ -6,10 +6,10 @@ import type { ChatCompletionMessageParam } from "openai/resources/index";
 import { GeneratedSceneSchema, SceneSchema, type GeneratedScene, type Scene } from "../schema/scene.js";
 import { validateScene } from "../engine/validateScene.js";
 import { getOpenAIClient, OPENAI_MODEL } from "./openaiClient.js";
-import { embedPrompt, PROJECT_ROOT, recordGeneration, toProjectRelative } from "../policy/feedback.js";
+import { embedPrompt, recordGeneration, toProjectRelative, WRITABLE_ROOT } from "../policy/feedback.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const SCENES_DIR = join(PROJECT_ROOT, "scenes");
+const SCENES_DIR = join(WRITABLE_ROOT, "scenes");
 const SYSTEM_PROMPT = readFileSync(join(__dirname, "prompts", "edit.system.md"), "utf-8");
 
 const MAX_ATTEMPTS = 3;

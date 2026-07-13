@@ -12,19 +12,32 @@ import { getOpenAIClient } from "../harness/openaiClient.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 export const PROJECT_ROOT = join(__dirname, "..", "..");
-const FEEDBACK_FILE = join(PROJECT_ROOT, "feedback.json");
+
+/**
+ * Where generated scenes/traces/feedback.json actually get written. Locally
+ * (CLI, `vite dev`) that's the real project directory, same as always. On a
+ * serverless deploy (Vercel sets `VERCEL=1`) the deployed bundle's filesystem
+ * is read-only except `/tmp` — writing to PROJECT_ROOT there would throw.
+ * `/tmp` is also ephemeral and not shared across invocations, which is fine:
+ * generate/edit/traverse there work statelessly, passing scene data through
+ * the request/response instead of round-tripping via disk (see traverseScene
+ * in traverse.ts) — this write is just so the same code path doesn't need a
+ * serverless-specific branch, not something later requests depend on.
+ */
+export const WRITABLE_ROOT = process.env.VERCEL ? "/tmp" : PROJECT_ROOT;
+const FEEDBACK_FILE = join(WRITABLE_ROOT, "feedback.json");
 
 /**
  * Every scenePath that crosses an API boundary (client<->server) or gets
  * stored in the feedback library must be root-relative, e.g.
- * "scenes/example-platformer.json" — never absolute. `join(PROJECT_ROOT, x)`
+ * "scenes/example-platformer.json" — never absolute. `join(WRITABLE_ROOT, x)`
  * silently double-prefixes if `x` is already absolute, so this is the one
  * place that conversion happens; every producer of a scenePath should route
  * through it before it leaves the process.
  */
 export function toProjectRelative(path: string): string {
   const resolved = resolve(path);
-  return resolved.startsWith(PROJECT_ROOT) ? resolved.slice(PROJECT_ROOT.length).replace(/^\/+/, "") : resolved;
+  return resolved.startsWith(WRITABLE_ROOT) ? resolved.slice(WRITABLE_ROOT.length).replace(/^\/+/, "") : resolved;
 }
 
 export interface FeedbackEntry {

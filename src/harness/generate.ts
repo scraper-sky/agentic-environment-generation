@@ -12,17 +12,17 @@ import {
   DEFAULT_TAU,
   embedPrompt,
   loadLibrary,
-  PROJECT_ROOT,
   recordGeneration,
   scoreLibrary,
   toProjectRelative,
   topExemplars,
+  WRITABLE_ROOT,
   type PolicyParams,
   type ScoredExemplar,
 } from "../policy/feedback.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const SCENES_DIR = join(PROJECT_ROOT, "scenes");
+const SCENES_DIR = join(WRITABLE_ROOT, "scenes");
 const SYSTEM_PROMPT = readFileSync(join(__dirname, "prompts", "generate.system.md"), "utf-8");
 
 const MAX_ATTEMPTS = 4;
@@ -46,7 +46,7 @@ function buildExemplarMessages(exemplars: ScoredExemplar[]): ChatCompletionMessa
   const messages: ChatCompletionMessageParam[] = [];
   for (const ex of exemplars) {
     try {
-      const raw = JSON.parse(readFileSync(join(PROJECT_ROOT, ex.entry.scenePath), "utf-8"));
+      const raw = JSON.parse(readFileSync(join(WRITABLE_ROOT, ex.entry.scenePath), "utf-8"));
       const { id: _id, prompt: _prompt, metadata: _metadata, ...generatedShape } = raw;
       messages.push({ role: "user", content: ex.entry.prompt });
       messages.push({ role: "assistant", content: JSON.stringify(generatedShape) });
@@ -140,7 +140,7 @@ export async function generateScene(prompt: string, options: { outPath?: string;
 
   // Always root-relative from here on — every consumer (CLI display, the
   // feedback library, the /api/generate response) must agree on this, or a
-  // downstream `join(PROJECT_ROOT, scenePath)` silently double-prefixes.
+  // downstream `join(WRITABLE_ROOT, scenePath)` silently double-prefixes.
   const scenePath = toProjectRelative(absoluteScenePath);
 
   recordGeneration({

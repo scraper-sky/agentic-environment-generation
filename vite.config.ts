@@ -192,9 +192,12 @@ export default defineConfig(({ command }) => ({
   // GitHub Pages serves a project repo at /<repo-name>/, not /, so asset URLs
   // in the production build need that prefix — but `vite dev` does honor
   // `base` too (it redirects `/` to it), so applying this unconditionally
-  // would move local dev off http://localhost:5173/ for no reason. Only the
-  // production build needs it.
-  base: command === "build" ? "/agentic-environment-generation/" : "/",
+  // would move local dev off http://localhost:5173/ for no reason. Vercel
+  // (or any other host serving at its own domain root) needs plain "/" even
+  // in a production build — `process.env.VERCEL` is set by Vercel's own
+  // build environment, so this picks the right one automatically instead of
+  // needing a separate build command per target.
+  base: command === "build" && !process.env.VERCEL ? "/agentic-environment-generation/" : "/",
   build: {
     outDir: "../../dist",
     emptyOutDir: true,

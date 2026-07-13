@@ -537,7 +537,11 @@ traverseBtn.addEventListener("click", async () => {
     const res = await fetch("/api/traverse", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ scenePath: currentScenePath }),
+      // Sent alongside scenePath (not instead of it) so this same request
+      // works against both backends: local dev reads scenePath from a real
+      // scenes/ folder on disk, while the Vercel deploy has no persistent
+      // disk between requests and uses the scene object directly instead.
+      body: JSON.stringify({ scenePath: currentScenePath, scene: currentScene }),
     });
     if (!res.ok || !res.body) throw new Error(`Traverse request failed (${res.status})`);
 
