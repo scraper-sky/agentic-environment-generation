@@ -27,6 +27,8 @@ const SYSTEM_PROMPT = readFileSync(join(__dirname, "prompts", "traverse.system.m
 
 /** Each LLM decision is held for this many physics substeps (~130ms of sim time at 60Hz). */
 const SUBSTEPS_PER_DECISION = 8;
+/** Safety cap on an airborne "noop" coast — long enough to cover a real jump arc (observed ~60-70 ticks), short enough to force a fresh decision if something is actually wrong. */
+const COAST_MAX_SUBSTEPS = 90;
 
 export interface DecisionLog {
   decisionIndex: number;
@@ -168,7 +170,18 @@ export async function traverse(scenePath: string, options: TraverseOptions = {})
     recentActions.push(action);
     options.onDecision?.(decision, { stepsRemaining: scene.maxSteps - tick, decisionBudget });
 
-    for (let i = 0; i < SUBSTEPS_PER_DECISION; i++) {
+    // "noop" while airborne has nothing new to decide each tick — the arc is
+    // already committed by momentum, and re-querying the LLM every 8 ticks
+    // just to hear "still coasting" burns the decision budget on ticks where
+    // no different action was ever possible. Let a held "noop" ride out the
+    // whole arc (up to a safety cap) instead, and only ask again once landed
+    // — that's the tick a real decision becomes possible again. Hazards and
+    // the objective are still checked every physics tick regardless, so nothing
+    // gets missed mid-coast, only the redundant LLM calls are skipped.
+    const isCoasting = scene.player.controls === "platformer" && action === "noop" && !isGrounded(sim);
+    const substepsThisDecision = isCoasting ? COAST_MAX_SUBSTEPS : SUBSTEPS_PER_DECISION;
+
+    for (let i = 0; i < substepsThisDecision; i++) {
       applyAction(sim, scene.player.controls, action);
       step(sim);
       tick++;
@@ -179,6 +192,7 @@ export async function traverse(scenePath: string, options: TraverseOptions = {})
         verdict = { status: "fail", reason: "timeout" };
         break decisionLoop;
       }
+      if (isCoasting && isGrounded(sim)) break;
     }
   }
 

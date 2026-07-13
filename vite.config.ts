@@ -3,7 +3,9 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { defineConfig, type Plugin, type ViteDevServer } from "vite";
 import { generateScene } from "./src/harness/generate.js";
+import { editScene, type EditTurn } from "./src/harness/edit.js";
 import { traverse } from "./src/harness/traverse.js";
+import { SceneSchema } from "./src/schema/scene.js";
 import { DEFAULT_LAMBDA, DEFAULT_TAU, loadLibrary, PROJECT_ROOT, recordRating } from "./src/policy/feedback.js";
 
 function readJsonBody(req: IncomingMessage): Promise<Record<string, unknown>> {
@@ -59,6 +61,26 @@ function harnessApiPlugin(): Plugin {
               weight: e.weight,
             })),
           });
+        } catch (err) {
+          sendJson(res, 500, { ok: false, error: err instanceof Error ? err.message : String(err) });
+        }
+      });
+
+      server.middlewares.use("/api/edit", async (req, res) => {
+        if (req.method !== "POST") return sendJson(res, 405, { ok: false, error: "POST only" });
+        try {
+          const body = await readJsonBody(req);
+          const instruction = typeof body["instruction"] === "string" ? body["instruction"].trim() : "";
+          if (!instruction) throw new Error("Missing 'instruction'");
+          const baseScene = SceneSchema.parse(body["scene"]);
+          const history: EditTurn[] = Array.isArray(body["history"])
+            ? body["history"].filter(
+                (t): t is EditTurn => typeof t === "object" && t !== null && (t.role === "user" || t.role === "assistant") && typeof t.content === "string",
+              )
+            : [];
+
+          const result = await editScene(baseScene, instruction, history);
+          sendJson(res, 200, { ok: true, scene: result.scene, scenePath: result.scenePath, attempts: result.attempts });
         } catch (err) {
           sendJson(res, 500, { ok: false, error: err instanceof Error ? err.message : String(err) });
         }

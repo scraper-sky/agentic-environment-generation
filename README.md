@@ -6,7 +6,7 @@ Built for the General Intuition "Infinite Environment Generation via an Agent Ha
 
 ## Start here if you're short on time
 
-The core deliverable is the two-CLI loop: **`generate`** (text → scene) and **`traverse`** (scene → autonomous agent → pass/fail, verified in code, never pixels). That's the direct answer to the brief. Everything from "Feedback-driven generation" onward in this README — retrieval-policy tuning, the live terminal, the reward-signal demo — was built on top of that core loop during follow-up iteration; it's real and working, but it's exploratory, not required to evaluate the harness itself.
+The core deliverable is the two-CLI loop: **`generate`** (text → scene) and **`traverse`** (scene → autonomous agent → pass/fail, verified in code, never pixels). That's the direct answer to the brief. Everything from "Editing a scene through chat" onward in this README — chat-based scene editing, retrieval-policy tuning, the live terminal, the reward-signal demo — was built on top of that core loop during follow-up iteration; it's real and working, but it's exploratory, not required to evaluate the harness itself.
 
 Fastest path to see it work: `npm install && npm run dev`, open the printed URL, pick `example-platformer.json` from the dropdown, click **Replay trace**.
 
@@ -17,7 +17,7 @@ Two small CLIs sharing one engine:
 - **`generate`** — text prompt → OpenAI (Structured Outputs) → a validated scene (JSON) → written to `scenes/`.
 - **`traverse`** — scene → a second OpenAI-powered agent that reads the scene's *game state* (never pixels) and issues one discrete action per decision, physics-simulated headlessly, until it succeeds, fails, or times out. Writes a full per-tick trace to `traces/` and exits with code `0` (success) or `1` (failure) — scriptable, no eyeballing required.
 
-A small Three.js viewer (`npm run dev`) renders any scene as pixel-art sprites (not flat shapes), replays a recorded trace, and lets you generate *and* traverse scenes right from the page — no CLI needed. It also has a rating widget and a live view into a reward-weighted retrieval loop, with its two parameters tunable by slider, so your ratings visibly and adjustably influence future generations (see below).
+A small Three.js viewer (`npm run dev`) renders any scene as pixel-art sprites (not flat shapes), replays a recorded trace, and lets you generate *and* traverse scenes right from the page — no CLI needed. It also has a rating widget, a live view into a reward-weighted retrieval loop with its two parameters tunable by slider, and a chat panel for iteratively editing whatever scene is loaded ("move the flag closer," "add a hazard near the gap") instead of only ever generating from scratch (see below).
 
 The repo ships with two hand-authored example scenes and their (real, generated) passing traces committed, so `npm run dev` shows working output immediately, with no API key needed. Generating and traversing your own scenes does need an OpenAI key.
 
@@ -86,6 +86,8 @@ interface Scene {
 
 Full definition with field-level docs: `src/schema/scene.ts`. The LLM-facing contract (what `generate` actually asks the model for) is `GeneratedSceneSchema` in the same file; the system prompt explaining units/coordinates/vocabulary to the model is `src/harness/prompts/generate.system.md`.
 
+**Prompt fidelity is an explicit instruction, not assumed.** A scene generated from "a person running in the plains" initially came back with two solid trees planted directly in the walking path — technically completable, but not what "plains" implies, and one of the trees turned out taller than the player's jump can actually clear (~90-115 units, from empirical testing), so the agent got stuck bouncing off it. Two fixes, both in the system prompt: don't manufacture a challenge the prompt didn't ask for (undirected scenery defaults to `sensor: true` — passable — instead of a wall), and any obstacle that *is* meant to be jumped over is capped at ~80 units, matching what's physically clearable. Re-running the same prompt after the fix produced a flat, open scene with decorative (passable) trees that the agent cleared in 22 decisions instead of failing at the cap.
+
 ## How the traversal agent decides what to do
 
 Each decision, the agent receives a compact JSON state (not pixels): its position/velocity, the objective's position and distance, hazard positions/distances, remaining step budget, and its own last few actions (so it can notice if it's stuck oscillating). The signals that matter most are computed by short physics raycasts, not by asking the LLM to reason about raw geometry — two *different* obstacle types get two different signals per control scheme, found the hard way by watching real runs fail:
@@ -96,6 +98,12 @@ Each decision, the agent receives a compact JSON state (not pixels): its positio
 The in-page **Traverse** button streams every decision live to a terminal-style panel as it happens (each decision is a real network round-trip, so this is actual progress, not a fake progress bar) — see `vite.config.ts`'s `/api/traverse` (newline-delimited JSON stream) and `traverse()`'s `onDecision` callback in `src/harness/traverse.ts`. That button caps at 60 decisions (~1–3 min worst case) so it doesn't leave you waiting indefinitely on a hard scene; `npm run traverse` via the CLI uses the scene's full `maxSteps` budget for a thorough, uncapped run.
 
 The agent replies with exactly one action from a closed enum (`left`/`right`/`jump`/`noop` or `up`/`down`/`left`/`right`/`noop`), enforced the same way the scene schema is — via `zodResponseFormat` — so it can never emit anything outside the declared action space. See `src/harness/traverse.ts` and `src/harness/prompts/traverse.system.md`.
+
+**Decision cadence isn't fixed-rate** — a `"noop"` chosen while airborne has nothing new to decide (the jump arc is already committed by momentum), so re-querying the LLM every 8 ticks just to hear "still coasting" was burning most of the decision budget on ticks where no different action was ever possible; watching a real trace get stuck at 60/60 decisions and barely past the first obstacle is what surfaced this. A held airborne `"noop"` now rides out the whole arc (up to a safety cap) and only asks again once landed, which is the tick a real decision becomes possible again — collapsed a jump arc that used to cost ~8 decisions down to 1 in testing, and turned a scene that couldn't finish in 60 decisions into one that finished in 22.
+
+## Editing a scene through chat
+
+The right sidebar's "Generate a scene" box always starts from a blank prompt; the left sidebar is different — it edits whatever scene is currently loaded, in a running conversation, closer to how Rosebud-style tools let you iterate on a world rather than only ever re-rolling it from scratch (built fresh for this project — see the note on that below). Type an instruction ("add a spike hazard near the gap," "move the flag closer," "make the room bigger"), and `src/harness/edit.ts` sends the *current* scene JSON plus the instruction (plus recent turns, for multi-step edits) back through the same structured-output + validation + repair-loop machinery `generate` uses — an edit is just a generation conditioned on an existing scene instead of a blank one, so it inherits the same reachability/spawn/enclosure guarantees automatically. Each edit gets its own scene id (so rating/trace lookups downstream don't collide across a chain of edits) but keeps a readable lineage in both the id prefix and the `prompt` field. Switching scenes via the dropdown or generating fresh resets the conversation; continuing to edit keeps building on it.
 
 ## Feedback-driven generation
 
@@ -145,10 +153,10 @@ prints a sparkline of distance-to-goal and shaped reward per trace, plus total/d
 src/
   schema/            Zod scene + action schemas (shared contract: types, validation, LLM output format)
   engine/            matter-js wrapper, objective checking, semantic scene validation, reward shaping — no rendering, no OpenAI
-  harness/           generate.ts / traverse.ts CLIs + their system prompts + the OpenAI client
+  harness/           generate.ts / traverse.ts / edit.ts CLIs+modules + their system prompts + the OpenAI client
   policy/            feedback.ts — the reward-weighted retrieval library + scoring equation
-  viewer/            Vite + Three.js browser app: renders a scene, replays a trace, in-page generate + rate UI
-vite.config.ts       Dev-only API (/api/generate, /api/rate, /api/traverse, /api/policy-state) backing the in-page UI
+  viewer/            Vite + Three.js browser app: renders a scene, replays a trace, in-page generate + edit + rate UI
+vite.config.ts       Dev-only API (/api/generate, /api/edit, /api/rate, /api/traverse, /api/policy-state) backing the in-page UI
 scenes/              Scene JSON files (two curated examples, plus real scenes generated along the way)
 traces/              Recorded traversal runs matching whatever's in scenes/
 feedback.json        Local ratings library (gitignored, created on first rating)

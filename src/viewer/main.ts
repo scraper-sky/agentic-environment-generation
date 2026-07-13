@@ -54,6 +54,10 @@ const lambdaValue = document.querySelector<HTMLSpanElement>("#lambda-value")!;
 const tauSlider = document.querySelector<HTMLInputElement>("#tau-slider")!;
 const tauValue = document.querySelector<HTMLSpanElement>("#tau-value")!;
 const terminal = document.querySelector<HTMLDivElement>("#terminal")!;
+const chatLog = document.querySelector<HTMLDivElement>("#chat-log")!;
+const chatInput = document.querySelector<HTMLInputElement>("#chat-input")!;
+const chatSendBtn = document.querySelector<HTMLButtonElement>("#chat-send-btn")!;
+const chatStatus = document.querySelector<HTMLDivElement>("#chat-status")!;
 
 lambdaSlider.addEventListener("input", () => (lambdaValue.textContent = Number(lambdaSlider.value).toFixed(2)));
 tauSlider.addEventListener("input", () => (tauValue.textContent = Number(tauSlider.value).toFixed(2)));
@@ -94,6 +98,74 @@ let currentMeshesById = new Map<string, THREE.Mesh>();
 let currentTrace: TraceFile | null = null;
 let currentScene: Scene | null = null;
 let currentScenePath = "";
+
+interface ChatTurn {
+  role: "user" | "assistant";
+  content: string;
+}
+let chatHistory: ChatTurn[] = [];
+
+function appendChatLine(text: string, className: string): void {
+  const line = document.createElement("div");
+  line.className = `chat-line ${className}`;
+  line.textContent = text;
+  chatLog.appendChild(line);
+  chatLog.scrollTop = chatLog.scrollHeight;
+}
+
+function resetChat(): void {
+  chatHistory = [];
+  chatLog.innerHTML =
+    '<div class="chat-line chat-placeholder">Select or generate a scene, then describe a change — e.g. "move the flag closer" or "add a spike hazard near the gap."</div>';
+}
+
+async function sendEdit(): Promise<void> {
+  const instruction = chatInput.value.trim();
+  if (!instruction || !currentScene) return;
+  chatInput.value = "";
+  chatSendBtn.disabled = true;
+  appendChatLine(instruction, "chat-user");
+  chatStatus.textContent = "Editing…";
+
+  try {
+    const res = await fetch("/api/edit", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ scene: currentScene, instruction, history: chatHistory }),
+    });
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error);
+
+    const scene = SceneSchema.parse(data.scene);
+    const virtualPath = `live:${data.scenePath}`;
+    dynamicScenes.set(virtualPath, scene);
+
+    const option = document.createElement("option");
+    option.value = virtualPath;
+    option.textContent = `${String(data.scenePath).split("/").pop()} (edited)`;
+    select.appendChild(option);
+    select.value = virtualPath;
+    render(virtualPath, { resetChatLog: false });
+
+    const attempts = data.attempts as number;
+    chatHistory.push({ role: "user", content: instruction });
+    chatHistory.push({ role: "assistant", content: `Updated the scene (${attempts} attempt${attempts > 1 ? "s" : ""}).` });
+    chatHistory = chatHistory.slice(-12); // bounded context, mirrors recentActions elsewhere in this project
+
+    appendChatLine(`Updated — ${attempts} attempt${attempts > 1 ? "s" : ""}.`, "chat-assistant");
+    chatStatus.textContent = "";
+  } catch (err) {
+    appendChatLine(err instanceof Error ? err.message : String(err), "chat-error");
+    chatStatus.textContent = "";
+  } finally {
+    chatSendBtn.disabled = false;
+  }
+}
+
+chatSendBtn.addEventListener("click", () => void sendEdit());
+chatInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") void sendEdit();
+});
 
 function loadScene(path: string): Scene {
   if (dynamicScenes.has(path)) return dynamicScenes.get(path)!;
@@ -233,14 +305,15 @@ function renderExemplars(exemplars: Exemplar[]): void {
   }
 }
 
-/** Renders a scene statically, then wires up trace replay if a matching trace exists. */
-function render(path: string): void {
+/** Renders a scene statically, then wires up trace replay if a matching trace exists. `resetChatLog` is false when this render is itself the result of an edit, so the conversation keeps building on the same lineage instead of clearing. */
+function render(path: string, options: { resetChatLog?: boolean } = {}): void {
   cancelAnimationFrame(animationHandle);
   cancelAnimationFrame(replayHandle);
   container.innerHTML = "";
   const scene = loadScene(path);
   currentScene = scene;
   currentScenePath = toProjectRelativeScenePath(path);
+  if (options.resetChatLog ?? true) resetChat();
 
   const threeScene = new THREE.Scene();
   threeScene.background = new THREE.Color("#141414");
