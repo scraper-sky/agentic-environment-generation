@@ -1,7 +1,36 @@
 import * as THREE from "three";
+import katex from "katex";
+import "katex/dist/katex.min.css";
 import { SceneSchema, type Scene, type SceneObject } from "../schema/scene.js";
 import type { TraceFile } from "../harness/traverse.js";
 import { getPixelTexture } from "./pixelSprites.js";
+
+/** Renders LaTeX into `el`, falling back to the raw source as plain text if KaTeX can't parse it — never a blank panel. */
+function renderMath(el: Element, tex: string, displayMode: boolean): void {
+  try {
+    katex.render(tex, el as HTMLElement, { throwOnError: false, displayMode });
+  } catch {
+    el.textContent = tex;
+  }
+}
+
+const ACCENT = "#e8a33d";
+
+function renderRetrievalEquations(): void {
+  renderMath(
+    document.querySelector("#eq-score")!,
+    String.raw`\text{score}_i = \textcolor{${ACCENT}}{\lambda} \cdot \text{sim}(p, p_i) + (1-\textcolor{${ACCENT}}{\lambda}) \cdot \text{reward}_i`,
+    true,
+  );
+  renderMath(
+    document.querySelector("#eq-weight")!,
+    String.raw`w_i = \dfrac{\exp(\text{score}_i \,/\, \textcolor{${ACCENT}}{\tau})}{\sum_j \exp(\text{score}_j \,/\, \textcolor{${ACCENT}}{\tau})}`,
+    true,
+  );
+  renderMath(document.querySelector("#eq-reward")!, String.raw`\text{reward}_i = 0.7\, r_i^{\text{human}} + 0.3\, r_i^{\text{auto}}`, true);
+  renderMath(document.querySelector("#lambda-symbol")!, String.raw`\lambda`, false);
+  renderMath(document.querySelector("#tau-symbol")!, String.raw`\tau`, false);
+}
 
 const sceneModules = import.meta.glob("../../scenes/*.json", { eager: true, import: "default" }) as Record<string, unknown>;
 const traceModules = import.meta.glob("../../traces/*.json", { eager: true, import: "default" }) as Record<string, unknown>;
@@ -399,6 +428,8 @@ generateBtn.addEventListener("click", async () => {
     generateBtn.disabled = false;
   }
 });
+
+renderRetrievalEquations();
 
 if (sceneFiles.length > 0) {
   select.value = sceneFiles[0]!;

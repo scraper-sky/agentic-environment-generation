@@ -93,7 +93,7 @@ Each decision, the agent receives a compact JSON state (not pixels): its positio
 - **Platformer**: `groundAheadRight`/`groundAheadLeft` (is the floor about to disappear — a gap?) and, separately, `wallAheadRight`/`wallAheadLeft` (is something solid — a tree, a pillar — standing directly in the path on otherwise-continuous ground?). The first covers falling, the second covers walking into an obstacle; conflating them was a real bug (an agent could see continuous ground and never realize a tree was blocking it).
 - **Topdown**: `blockedUp`/`blockedDown`/`blockedLeft`/`blockedRight` — is a wall immediately in that direction? Without this the agent has no way to detect it needs to detour around an obstacle.
 
-The in-page **Traverse** button streams every decision live to a terminal-style panel as it happens (each decision is a real network round-trip, so this is actual progress, not a fake progress bar) — see `vite.config.ts`'s `/api/traverse` (newline-delimited JSON stream) and `traverse()`'s `onDecision` callback in `src/harness/traverse.ts`.
+The in-page **Traverse** button streams every decision live to a terminal-style panel as it happens (each decision is a real network round-trip, so this is actual progress, not a fake progress bar) — see `vite.config.ts`'s `/api/traverse` (newline-delimited JSON stream) and `traverse()`'s `onDecision` callback in `src/harness/traverse.ts`. That button caps at 60 decisions (~1–3 min worst case) so it doesn't leave you waiting indefinitely on a hard scene; `npm run traverse` via the CLI uses the scene's full `maxSteps` budget for a thorough, uncapped run.
 
 The agent replies with exactly one action from a closed enum (`left`/`right`/`jump`/`noop` or `up`/`down`/`left`/`right`/`noop`), enforced the same way the scene schema is — via `zodResponseFormat` — so it can never emit anything outside the declared action space. See `src/harness/traverse.ts` and `src/harness/prompts/traverse.system.md`.
 
@@ -114,7 +114,9 @@ score_i  = λ · sim(p, prompt_i) + (1 − λ) · reward_i        (λ = 0.6, fav
 weight_i = softmax(score_i / τ)                              (τ = 0.2)
 ```
 
-The top-scored exemplars (their actual past prompt + the scene JSON that was generated for it) get spliced into the system prompt as few-shot examples for the next generation. The viewer's "Retrieval policy" panel shows this happening for real: which exemplars were pulled for your last generation, and their similarity/reward/score/weight — not just the equation printed as text. Both `λ` and `τ` are sliders in that same panel, sent with every generate request — drag `λ` toward 0 to chase reward over relevance, or `τ` up to flatten the weighting toward uniform, and watch the exemplar list/weights actually change.
+The top-scored exemplars (their actual past prompt + the scene JSON that was generated for it) get spliced into the system prompt as few-shot examples for the next generation. The viewer's "Retrieval policy" panel shows this happening for real, as rendered LaTeX (via KaTeX) — which exemplars were pulled for your last generation, and their similarity/reward/score/weight — not just the equation described in prose. Both `λ` and `τ` are sliders in that same panel, sent with every generate request — drag `λ` toward 0 to chase reward over relevance, or `τ` up to flatten the weighting toward uniform, and watch the exemplar list/weights actually change.
+
+**What `weight_i` actually is, precisely**: `w_i` is exemplar `i`'s share of total influence across the *whole* rated library (all `w_i` sum to 1) — a diagnostic of how dominant the top pick is versus the runner-ups, not a random-sampling probability. Which exemplars get used is deterministic: top-k by `score_i` (the same order `w_i` ranks them in, since softmax preserves rank), matching the rest of the project's bias toward reproducibility over stochasticity (traversal also runs at `temperature=0`).
 
 This is intentionally *not* fine-tuning: no training job, no GPU, improves as soon as one rating exists, degrades gracefully to zero-shot generation when the library is empty. `feedback.json` (gitignored — it's local usage state, not project content) is the whole store; delete it to reset the policy to a blank slate.
 
@@ -130,7 +132,7 @@ Potential-based reward shaping (Ng, Harada & Russell, 1999) — rewards any tick
 
 ```bash
 npm run reward-demo              # every trace in traces/
-npm run reward-demo -- traces/example-platformer-....json   # a specific one
+npm run reward-demo -- traces/example-platformer-<timestamp>.json   # a specific one
 ```
 
 prints a sparkline of distance-to-goal and shaped reward per trace, plus total/discounted return. Run it against whatever's in your `traces/` folder — successful runs show a clean monotonic distance decline and a clearly higher return than failed/timed-out ones, which is the actual point: it's a signal that visibly discriminates good runs from bad ones, the kind of thing a reward model would be trained on.
@@ -147,8 +149,8 @@ src/
   policy/            feedback.ts — the reward-weighted retrieval library + scoring equation
   viewer/            Vite + Three.js browser app: renders a scene, replays a trace, in-page generate + rate UI
 vite.config.ts       Dev-only API (/api/generate, /api/rate, /api/traverse, /api/policy-state) backing the in-page UI
-scenes/              Scene JSON files (two committed examples + anything you generate)
-traces/              Recorded traversal runs (two committed examples + anything you generate)
+scenes/              Scene JSON files (two curated examples, plus real scenes generated along the way)
+traces/              Recorded traversal runs matching whatever's in scenes/
 feedback.json        Local ratings library (gitignored, created on first rating)
 scripts/demo.ts      Runs both example prompts through generate -> traverse end to end
 scripts/reward-demo.ts   Computes and prints the shaped-reward curve for recorded traces
